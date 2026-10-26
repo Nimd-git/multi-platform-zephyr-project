@@ -2,6 +2,7 @@
 build/
 *.dts_compiled
 zephyr_modules.txt
+app/build_all.log
 
 # west 工作区本地配置与拉取的外部模块（由 west update 重建）
 .west/

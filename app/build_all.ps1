@@ -1,22 +1,25 @@
 #requires -version 5.1
 $ErrorActionPreference = 'Continue'
 
-$env:ZEPHYR_BASE = 'F:\src\zephyr_project\zephyr'
+# 以脚本所在位置推导工作区根，与文件夹名解耦（重命名后无需修改）
+$ws = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+
+$env:ZEPHYR_BASE = Join-Path $ws 'zephyr'
 $env:ZEPHYR_SDK_INSTALL_DIR = 'E:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1'
 $env:ZEPHYR_TOOLCHAIN_VARIANT = 'zephyr'
 $env:ESPRESSIF_TOOLCHAIN_PATH = 'C:\Users\12968399\.zinstaller\tools\openocds\openocd-esp32'
 $env:OPENOCD_DEFAULT_PATH = 'C:/Users/12968399/.zinstaller/tools/openocds/openocd-esp32/share/openocd/scripts'
-$platformModule = 'F:\src\zephyr_project\platform'
-$atmosicModule = 'F:\src\zephyr_project\modules\hal\atmosic'
-$uwbiotModule = 'F:\src\zephyr_project\modules\uwb\uwbiot'
+$platformModule = Join-Path $ws 'platform'
+$atmosicModule = Join-Path $ws 'modules\hal\atmosic'
+$uwbiotModule = Join-Path $ws 'modules\uwb\uwbiot'
 
 # Ensure venv west is on PATH
-$venvScripts = 'F:\src\zephyr_project\.venv\Scripts'
+$venvScripts = Join-Path $ws '.venv\Scripts'
 if ($env:PATH -notlike "*$venvScripts*") {
     $env:PATH = "$venvScripts;${env:PATH}"
 }
 
-$appDir = 'F:\src\zephyr_project\app'
+$appDir = Join-Path $ws 'app'
 $boards = @(
     @{ Name='esp32c6_devkitc'; Board='esp32c6_devkitc/esp32c6/hpcore'; Dir='build/esp32c6_devkitc'; ExtraModules="$uwbiotModule;$platformModule" },
     @{ Name='stm32f407ve_custom'; Board='stm32f407ve_custom'; Dir='build/stm32f407ve_custom'; ExtraModules="$uwbiotModule;$platformModule" },
