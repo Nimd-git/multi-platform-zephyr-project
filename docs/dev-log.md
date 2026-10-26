@@ -6,6 +6,41 @@
 
 ---
 
+## 2026-10-26 · 工作区重命名为 multi-platform-zephyr-project，全面去绝对路径
+
+**目标**：项目根目录由 `zephyr_project` 更名为 `multi-platform-zephyr-project`（用户脚本执行），
+清理全部残留绝对路径，保证仓库整体可移动/改名。
+
+**改动**：
+- 用户脚本完成：目录改名；`app/build_all.ps1` 改为 `$PSScriptRoot` 推导工作区根（与文件夹名解耦）；docs 路径批量替换
+- 本次补齐：
+  - `app/debug/jlink_fastload_program.jlink`：6 处旧绝对路径（含已失效的 openair 根目录布局）→ 工作区根相对路径，
+    并在头部注明"先 cd 到工作区根再运行 JLink"；fast_load.bin 指向 `modules/hal/atmosic/modules/hal_atmosic/ATM34xx/rev-5/openocd/fast_load/fast_load.bin`
+  - `docs/development-sop.md`：7 处绝对路径 → `<工作区根>` 占位 / `$PWD` 相对写法
+  - 用户级环境变量 `ZEPHYR_EXTRA_MODULES`（HKCU）：更新为 `<工作区根>\modules\uwb\uwbiot;<工作区根>\platform` 对应的新绝对路径
+
+**关键决策 / 踩坑**：
+- 仓库内部一律相对路径；机器级路径（`E:\zephyr-sdk`、`C:\Users\<user>\.zinstaller`）不属于仓库，保持绝对
+- 环境变量/注册表是进程上下文，无法相对化，保持绝对；文档与脚本内的工程路径一律相对
+- 验证方式：全树 grep `F:\src\`（排除 zephyr/modules/.venv/build）零命中
+- **重命名副作用：.venv 启动器硬编码路径**：`.venv\Scripts\west.exe` / `cmake.exe` 是 Python venv 的 launcher stub，
+  内部硬编码了创建时的绝对路径（`f:\src\zephyr_project\.venv`），重命名后 west 报 "Not a file: F:/src/zephyr_project/zephyr/cmake/pristine.cmake"。
+  处理：`python -m venv .venv --upgrade` 重建启动器，再 `pip install --force-reinstall west==1.5.0 cmake==4.4.4`。
+  以后再 rename 工作区根目录时，这一步不能省。
+- **HKCU ZEPHYR_EXTRA_MODULES 同步**：注册表内有旧路径，已更新为新绝对路径作为 CLI 兜底
+
+**验证**：三平台重命名后全量构建通过（源码/配置未变，内存占用与重命名前基线完全一致）。
+
+| 板卡 | FLASH | 占比 | RAM | 占比 |
+|---|---|---|---|---|
+| esp32c6_devkitc | 420,804 B | 5.02% | 189,088 B (sram0) | 37.12% |
+| stm32f407ve_custom | 116,588 B | 22.24% | 30,560 B | 23.32% |
+| atm3405_custom | 88,652 B | 17.11% | 28,080 B | 10.71% |
+
+**遗留**：旧 `app/build/*` 缓存含旧绝对路径，重命名后首建必须 pristine（`build_all.ps1` 已固定 `-p always`）。
+
+---
+
 ## 2026-10-21 · 应用开发层中间件交付（Modbus / JSON+CBOR / KV / UWB SR040）
 
 **目标**：在应用开发层补齐四类中间件，并完成三块实板的构建验证。

@@ -1,6 +1,11 @@
 ; ============================================================
 ; ATM3405 fast_load programming script (no-op ResetTarget)
 ; Uses openair fast_load protocol to bypass FLM limitations
+;
+; 路径约定：全部为工作区根目录的相对路径。
+; 用法：先 cd 到工作区根目录，再执行
+;   JLink.exe -CommanderScript app\debug\jlink_fastload_program.jlink
+; （日常烧录推荐 `west flash --runner atmfastload`，脚本由 runner 自动生成）
 ; ============================================================
 
 si SWD
@@ -10,7 +15,7 @@ halt
 speed 2000
 
 ; ---- Phase 1: Load fast_load.bin to SRAM ----
-loadbin f:\src\zephyr_project\openair\modules\hal_atmosic\ATM34xx\rev-5\openocd\fast_load\fast_load.bin, 0x20000000
+loadbin modules/hal/atmosic/modules/hal_atmosic/ATM34xx/rev-5/openocd/fast_load/fast_load.bin, 0x20000000
 
 ; ---- Phase 2: PSEQ init ----
 w4 0x50153020, 0x1
@@ -73,7 +78,7 @@ h
 mem32 0x2001A638, 1
 
 ; ---- Phase 9: Program chunk 0 (16384 bytes, offset=0x0) ----
-loadbin f:\src\zephyr_project\app\debug\zephyr_chunk_0.bin, 0x2001A640
+loadbin app/debug/zephyr_chunk_0.bin, 0x2001A640
 w4 0x2001A638, 0x40000101
 w4 0x2001A63C, 0x00010000
 w4 0xE000EDF8, 0x20040000
@@ -86,7 +91,7 @@ h
 mem32 0x2001A638, 1
 
 ; ---- Phase 10: Program chunk 1 (16384 bytes, offset=0x4000) ----
-loadbin f:\src\zephyr_project\app\debug\zephyr_chunk_1.bin, 0x2001A640
+loadbin app/debug/zephyr_chunk_1.bin, 0x2001A640
 w4 0x2001A638, 0x40000101
 w4 0x2001A63C, 0x00014000
 w4 0xE000EDF8, 0x20040000
@@ -99,7 +104,7 @@ h
 mem32 0x2001A638, 1
 
 ; ---- Phase 11: Program chunk 2 (16384 bytes, offset=0x8000) ----
-loadbin f:\src\zephyr_project\app\debug\zephyr_chunk_2.bin, 0x2001A640
+loadbin app/debug/zephyr_chunk_2.bin, 0x2001A640
 w4 0x2001A638, 0x40000101
 w4 0x2001A63C, 0x00018000
 w4 0xE000EDF8, 0x20040000
@@ -112,7 +117,7 @@ h
 mem32 0x2001A638, 1
 
 ; ---- Phase 12: Program chunk 3 (16384 bytes, offset=0xC000) ----
-loadbin f:\src\zephyr_project\app\debug\zephyr_chunk_3.bin, 0x2001A640
+loadbin app/debug/zephyr_chunk_3.bin, 0x2001A640
 w4 0x2001A638, 0x40000101
 w4 0x2001A63C, 0x0001C000
 w4 0xE000EDF8, 0x20040000
@@ -125,7 +130,7 @@ h
 mem32 0x2001A638, 1
 
 ; ---- Phase 13: Program chunk 4 (15140 bytes, offset=0x10000) ----
-loadbin f:\src\zephyr_project\app\debug\zephyr_chunk_4.bin, 0x2001A640
+loadbin app/debug/zephyr_chunk_4.bin, 0x2001A640
 w4 0x2001A638, 0x3B240101
 w4 0x2001A63C, 0x00020000
 w4 0xE000EDF8, 0x20040000

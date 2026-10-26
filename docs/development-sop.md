@@ -22,7 +22,7 @@
 ## 1. 项目全景
 
 ```
-F:\src\multi-platform-zephyr-project\
+<工作区根>\             # 本仓库根目录，可整体移动/改名（内部一律相对路径）
 ├── zephyr/                  # 上游 Zephyr 4.4.99（只读，禁止修改）
 ├── modules/                 # west 管理的上游模块 + 厂商 SDK（只读）
 │   ├── hal/atmosic/         # Atmosic SDK（module 名 openair），仅 atm3405 使用
@@ -100,7 +100,7 @@ powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Full
 
 | 变量 | 值 | 注入位置 |
 |---|---|---|
-| `ZEPHYR_BASE` | `F:\src\multi-platform-zephyr-project\zephyr` | `scripts/env.ps1`、workspace 文件、`build_all.ps1` |
+| `ZEPHYR_BASE` | `<工作区根>\zephyr` | `scripts/env.ps1`、workspace 文件、`build_all.ps1` |
 | `ZEPHYR_TOOLCHAIN_VARIANT` | `zephyr` | 同上 |
 | `ZEPHYR_SDK_INSTALL_DIR` | `E:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1` | 同上 |
 | `ZEPHYR_EXTRA_MODULES` | `...\modules\uwb\uwbiot;...\platform` | **必须**在 `zephyr_platform.code-workspace` 的 `terminal.integrated.env.windows` 中（VS Code 集成终端）与 `app/build_all.ps1` 中（CLI） |
@@ -128,25 +128,26 @@ powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Full
 ### 4.1 三块实板批量构建（推荐）
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File F:\src\multi-platform-zephyr-project\app\build_all.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File app\build_all.ps1
 ```
 
 - 逐板 `pristine` 全量构建，日志：`app/build_all.log`
 - 单板构建命令（等价）：
 
 ```powershell
-$env:ZEPHYR_BASE='F:\src\multi-platform-zephyr-project\zephyr'
+# 以下命令假设当前目录为工作区根（仓库内部一律使用相对路径）
+$env:ZEPHYR_BASE="$PWD\zephyr"
 $env:ZEPHYR_SDK_INSTALL_DIR='E:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1'
 $env:ZEPHYR_TOOLCHAIN_VARIANT='zephyr'
-$env:ZEPHYR_EXTRA_MODULES='F:\src\multi-platform-zephyr-project\modules\uwb\uwbiot;F:\src\multi-platform-zephyr-project\platform'
-$env:PATH='F:\src\multi-platform-zephyr-project\.venv\Scripts;'+$env:PATH
+$env:ZEPHYR_EXTRA_MODULES="$PWD\modules\uwb\uwbiot;$PWD\platform"
+$env:PATH="$PWD\.venv\Scripts;"+$env:PATH
 
 # esp32c6
 west build -p always -b esp32c6_devkitc/esp32c6/hpcore -d app/build/esp32c6_devkitc app
 # stm32f407
 west build -p always -b stm32f407ve_custom -d app/build/stm32f407ve_custom app
 # atm3405（ExtraModules 需追加 atmosic）
-$env:ZEPHYR_EXTRA_MODULES='F:\src\multi-platform-zephyr-project\modules\hal\atmosic;F:\src\multi-platform-zephyr-project\modules\uwb\uwbiot;F:\src\multi-platform-zephyr-project\platform'
+$env:ZEPHYR_EXTRA_MODULES="$PWD\modules\hal\atmosic;$PWD\modules\uwb\uwbiot;$PWD\platform"
 west build -p always -b atm3405_custom -d app/build/atm3405_custom app
 ```
 
