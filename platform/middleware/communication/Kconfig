@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# 通信中间件：Modbus RTU 主站（client）
+
+config PLAT_MW_COMMUNICATION
+	bool "Communication middleware (Modbus RTU client)"
+	default n
+	depends on PLATFORM_SERVICES
+	select MODBUS
+	select MODBUS_CLIENT
+	select MODBUS_SERIAL
+	help
+	  启用 Modbus RTU 主站封装（plat_modbus）。
+	  需要在板级 overlay 中为某个 UART 增加形如：
+	    modbus0 { compatible = "zephyr,modbus-serial"; status = "okay"; };
+	  的子节点，iface_name 使用该节点名。

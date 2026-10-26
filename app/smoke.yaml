@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Twister 测试描述：双架构冒烟（QEMU 硬件在环）+ ESP32-C3/C6 实板冒烟
+# 运行:
+#   west twister -T app -p qemu_cortex_m3 -p qemu_riscv64 -v
+#   west twister -T app -p esp32c3_devkitc --device-testing \
+#                --device-serial <COMx> -v
+#   west twister -T app -p esp32c6_devkitc/esp32c6/hpcore --device-testing \
+#                --device-serial <COMx> -v
+#   west twister -T app -p stm32u5g9b_custom --device-testing \
+#                --device-serial <COMx> -v
+
+tests:
+  platform.smoke:
+    tags:
+      - platform_smoke
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Platform smoke started"
+      timeout: 30
+    platform_allow:
+      #- qemu_cortex_m3
+      #- qemu_riscv64
+      #- esp32c3_devkitc
+      #- esp32c6_devkitc/esp32c6/hpcore
+      #- stm32u5g9b_custom
+      - stm32f407ve_custom
+      - atm3405_custom

@@ -1,0 +1,15 @@
+identifier: stm32u5g9b_custom
+name: STM32U5G9BJY6Q Custom Board
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+supported:
+  - gpio
+  - button
+  - uart
+  - usart
+ram: 3008
+flash: 4096
+vendor: st

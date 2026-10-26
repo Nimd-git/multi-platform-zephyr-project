@@ -1,0 +1,69 @@
+/*
+ * Copyright (c) 2026
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <st/f4/stm32f407Xe.dtsi>
+#include <st/f4/stm32f407v(e-g)tx-pinctrl.dtsi>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/ {
+	model = "STM32F407VET6 custom board";
+	compatible = "st,stm32f407ve-custom";
+
+	chosen {
+		zephyr,console = &usart3;
+		zephyr,shell-uart = &usart3;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,dtcm = &ccm0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&gpiob 9 GPIO_ACTIVE_HIGH>;
+			label = "User LED";
+		};
+	};
+
+	aliases {
+		led0 = &led0;
+	};
+};
+
+/* 板载无外部晶振，使用内部 HSI 16MHz RC 振荡器 */
+&clk_hsi {
+	status = "okay";
+};
+
+/* PLL: HSI 16MHz / M(16) = 1MHz，× N(336) = 336MHz VCO，
+ * / P(2) = 168MHz SYSCLK；/ Q(7) = 48MHz（USB 时钟）
+ */
+&pll {
+	div-m = <16>;
+	mul-n = <336>;
+	div-p = <2>;
+	div-q = <7>;
+	clocks = <&clk_hsi>;
+	status = "okay";
+};
+
+&rcc {
+	clocks = <&pll>;
+	clock-frequency = <DT_FREQ_M(168)>;
+	ahb-prescaler = <1>;
+	apb1-prescaler = <4>;
+	apb2-prescaler = <2>;
+};
+
+/* 控制台/shell：USART3，TX=PD8，RX=PD9 */
+&usart3 {
+	pinctrl-0 = <&usart3_tx_pd8 &usart3_rx_pd9>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "okay";
+};

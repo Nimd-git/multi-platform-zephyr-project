@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# HAL 适配层（多版本 HAL 共存/厂商驱动适配）。
+#
+# 架构图中列出的目标芯片：
+#   ARM Cortex-M : STM32F4 / nRF52840 / ESP32-S3
+#   RISC-V       : GD32VF103 / ESP32-C3 / CH32V307
+#   ARC / x86    : 后续扩展
+#
+# 这些厂商 HAL 均以 west 模块形式提供（hal_stm32/hal_nordic/hal_espressif/
+# hal_gigadevice/hal_wch，见 zephyr/west.yml 的 SHA 锁定），通过板级
+# BOARD_ROOT 与 DTS overlay 引入，不在平台层重复实现。本配置用于控制
+# 平台自有的 HAL 差异封装（include/platform/plat_arch.h 等）。
+
+config PLAT_HAL_ADAPTER
+	bool "Multi-vendor HAL adapter layer"
+	default y
+	depends on PLATFORM_SERVICES
+	help
+	  编译平台架构差异封装（plat_arch.h）。各厂商 HAL 本身仍由上游
+	  west 模块提供，二者通过设备树与 Kconfig 共存。

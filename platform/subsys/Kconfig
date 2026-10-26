@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# 系统服务层（架构图黄色区域）中由平台层提供/封装的服务。
+# 网络协议栈、VFS、TLS、日志、调试、追踪、性能分析等直接复用上游 subsys，
+# 在应用 prj.conf 中使能即可，此处只声明平台增值服务。
+
+config PLAT_DEVICE_MGMT
+	bool "Device management service (enumeration/health/reset)"
+	default y
+	depends on PLATFORM_SERVICES
+	help
+	  设备枚举与发现（STRUCT_SECTION_FOREACH(device)）、设备健康监测、
+	  错误计数/复位记录，以及 platform shell 下的 devices 命令。
+	  对应架构图“设备管理服务/日志系统”的平台侧部分。
+
+config PLAT_PM
+	bool "Platform PM runtime service (device power management)"
+	default y
+	depends on PLATFORM_SERVICES
+	help
+	  设备运行时电源管理统一封装（pm_device_runtime 的 plat_* 接口）。
+	  对应架构图“设备管理服务 -> 运行时电源管理”。
+
+config PLAT_FS
+	bool "Platform filesystem service (LittleFS unified API)"
+	default y
+	depends on PLATFORM_SERVICES
+	depends on FILE_SYSTEM_LITTLEFS
+	depends on FILE_SYSTEM_LIB_LINK
+	help
+	  LittleFS 虚拟文件系统统一封装（plat_fs_* 接口）。
+	  对应架构图“系统服务层 -> 虚拟文件系统”。
+
+config PLAT_NET
+	bool "Platform network service (IPv4 + MQTT single-link)"
+	default y
+	depends on PLATFORM_SERVICES
+	help
+	  网络协议栈统一封装（WiFi + MQTT，蓝牙/蜂窝/TLS 预留）。
+	  对应架构图“系统服务层 -> 网络协议栈”。

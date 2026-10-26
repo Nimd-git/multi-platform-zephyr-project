@@ -1,0 +1,12 @@
+/*
+ * Copyright (c) 2026
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * ATM3405 定制板 pinctrl（基于 WQK 5x5 封装）。
+ */
+
+#include <atm34_pinmux.h>
+
+&pinctrl {
+};

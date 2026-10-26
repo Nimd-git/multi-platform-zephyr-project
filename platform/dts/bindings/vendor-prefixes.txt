@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Vendor prefixes for platform module (edtlib merges vendor-prefixes.txt from all DTS_ROOTs).
+# Format: <vnd><TAB><vendor>
+
+atmosic	Atmosic Technologies
+iron	Iron Device
+kinetic	Kinetic Technologies
+plat	Platform Framework

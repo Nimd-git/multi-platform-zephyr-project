@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# 数据中间件：JSON + CBOR
+
+config PLAT_MW_DATA
+	bool "Data middleware (JSON + CBOR)"
+	default n
+	depends on PLATFORM_SERVICES
+	select JSON_LIBRARY
+	select ZCBOR
+	help
+	  启用数据序列化封装（plat_data）：
+	  JSON 基于 Zephyr json 库描述符 API；
+	  CBOR 基于 zcbor 流式编码（适合 MQTT payload 等紧凑场景）。

@@ -1,0 +1,85 @@
+/*
+ * Copyright (c) 2026
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * ATM3405 定制板设备树（基于 ATMEVK-3405-WQK-5，no-TZ 用户应用模式）。
+ * - 控制台：uart1（tx-pin=27）
+ * - 按键：button0 = gpio0 pin5（ACTIVE_HIGH）
+ * - LED：led0 = gpio0 pin7, led1 = gpio0 pin6
+ */
+
+/dts-v1/;
+
+#ifndef FLASH_SIZE
+#define FLASH_SIZE 0x100000
+#endif
+#include <arm/atmosic/ATM34xx.dtsi>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include "atm3405_custom-pinctrl.dtsi"
+
+#define STACKED_FLASH_WQK
+#include "atm3405_custom-stacked-flash.dtsi"
+
+/ {
+	model = "ATM3405 Custom Board";
+	compatible = "atmosic,atm3405-custom";
+
+	chosen {
+		zephyr,console = &uart1;
+		zephyr,shell-uart = &uart1;
+		zephyr,sram = &sram0;
+		zephyr,flash-controller = &rram_controller;
+		zephyr,flash = &rram0;
+		zephyr,entropy = &trng;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
+			label = "Red LED1";
+		};
+		led1: led_1 {
+			gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+			label = "Yellow LED2";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+			label = "Button1";
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	aliases {
+		led0 = &led0;
+		sw0 = &button0;
+	};
+
+	zephyr,user {
+		pin-arrangement = "5X5";
+	};
+};
+
+&uart1 {
+	tx-pin = <27>;
+};
+
+/*
+ * Zephyr v4.4 移除了 ADC_GAIN_1_8；openair SoC dtsi 中 VBatt/VStore
+ * 通道仍使用该增益。此处覆写为 v4.4 支持的 ADC_GAIN_1_6，
+ * 以保持 openair 仓库无本地修改。
+ */
+&adc {
+	channel@1 {
+		zephyr,gain = "ADC_GAIN_1_6";
+	};
+	channel@2 {
+		zephyr,gain = "ADC_GAIN_1_6";
+	};
+};

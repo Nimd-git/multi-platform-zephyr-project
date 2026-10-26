@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// stm32f407ve_custom（STM32F407VET6，LQFP100，Cortex-M4）板级设备树扩展：
+//   - plat-led0：桥接到板级 led0（PB9），供 app_kernel_demo 翻转
+//   - platform-monitor：自研骨架驱动实例（纯软件设备，验证 DT_INST 实例化链路）
+//   - SPI1：PA5(SCK)/PA6(MISO)/PA7(MOSI)，CS 由软件控制
+//   - I2C1：PB6(SCL)/PB7(SDA)
+//   - USART2：PA2(TX)/PA3(RX)，挂 Modbus RTU 主站（modbus0）
+//   - flash 分区：划分 slot0（应用）+ storage（LittleFS）
+//   - fstab：LittleFS 挂载到 storage_partition
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	aliases {
+		plat-led0 = &led0;
+	};
+
+	plat_monitor0: platform-monitor {
+		compatible = "plat,platform-monitor";
+		report-interval-ms = <1000>;
+		status = "okay";
+	};
+
+	fstab {
+		compatible = "zephyr,fstab";
+		lfs0: lfs {
+				compatible = "zephyr,fstab,littlefs";
+				mount-point = "/lfs";
+				partition = <&storage_partition>;
+				read-size = <16>;
+				prog-size = <16>;
+				cache-size = <64>;
+				lookahead-size = <32>;
+				block-cycles = <512>;
+				automount;
+			};
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		/* 前 256KB 给应用（无 MCUboot 场景） */
+		slot0_partition: partition@0 {
+			label = "image-0";
+			reg = <0x00000000 DT_SIZE_K(256)>;
+		};
+
+		/* 后 256KB 给 LittleFS */
+		storage_partition: partition@40000 {
+			label = "storage";
+			reg = <0x00040000 DT_SIZE_K(256)>;
+		};
+	};
+};
+
+/* SPI1：PA5(SCK) / PA6(MISO) / PA7(MOSI) */
+&spi1 {
+	pinctrl-0 = <&spi1_sck_pa5 &spi1_miso_pa6 &spi1_mosi_pa7>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+/* I2C1：PB6(SCL) / PB7(SDA) */
+&i2c1 {
+	pinctrl-0 = <&i2c1_scl_pb6 &i2c1_sda_pb7>;
+	pinctrl-names = "default";
+	clock-frequency = <I2C_BITRATE_FAST>;
+	status = "okay";
+};
+
+/* USART2：PA2(TX) / PA3(RX)，Modbus RTU 主站总线 */
+&usart2 {
+	pinctrl-0 = <&usart2_tx_pa2 &usart2_rx_pa3>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "okay";
+
+	modbus0: modbus0 {
+		compatible = "zephyr,modbus-serial";
+		status = "okay";
+	};
+};

@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# ATM3405 定制板默认配置。
+
+# 电源管理（暂时关闭：sys_clock_correct 在 v4.4 不存在）
+# CONFIG_PM=y

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# UWB 中间件：NXP SR040（UCI）
+
+config PLAT_MW_UWB
+	bool "UWB middleware (NXP SR040 via UCI)"
+	default n
+	depends on PLATFORM_SERVICES
+	depends on ZEPHYR_NXP_UWBIOT_MODULE
+	help
+	  启用 UWB 封装（plat_uwb），依赖 nxp-uwbiot 模块
+	  （modules/uwb/uwbiot，需加入 ZEPHYR_EXTRA_MODULES）。
+	  板级 overlay 声明 nxp,uwb-sr040-device 节点后功能生效，
+	  未声明节点时 API 返回 -ENODEV。

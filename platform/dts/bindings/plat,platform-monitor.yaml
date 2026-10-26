@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# 自研骨架驱动 plat,platform-monitor 的设备树绑定。
+# QEMU 双架构在 app/boards/*.overlay 中各实例化一个该节点。
+
+description: Platform skeleton monitor device
+
+compatible: "plat,platform-monitor"
+
+include: base.yaml
+
+properties:
+  report-interval-ms:
+    type: int
+    default: 1000
+    description: 周期上报间隔（毫秒），骨架驱动仅记录该参数。

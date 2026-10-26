@@ -1,0 +1,15 @@
+identifier: stm32f407ve_custom
+name: STM32F407VET6 Custom Board
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+supported:
+  - gpio
+  - led
+  - uart
+  - usart
+ram: 128
+flash: 512
+vendor: st

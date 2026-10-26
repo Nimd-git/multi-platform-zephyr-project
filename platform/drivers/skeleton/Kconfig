@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# 自研驱动骨架：plat,platform-monitor
+# 演示“统一设备模型”的标准写法：设备树 compatible 实例化 + DEVICE_DT_INST_DEFINE
+# + POST_KERNEL 初始化级别 + 自定义驱动 API。QEMU 双架构均在 overlay 中
+# 实例化了一个该设备，无需真实硬件即可跑通驱动加载流程。
+
+config PLAT_MONITOR
+	bool "Platform monitor skeleton driver"
+	default y
+	depends on DT_HAS_PLAT_PLATFORM_MONITOR_ENABLED
+	help
+	  使能后，驱动按设备树中 compatible = "plat,platform-monitor" 的节点
+	  自动实例化，可通过 shell 命令 "platform ping" 调用其 API。

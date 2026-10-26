@@ -1,0 +1,13 @@
+identifier: atm3405_custom/ATM34xx-5
+name: ATM3405 Custom Board
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+supported:
+  - entropy
+  - flash
+  - gpio
+  - rram
+  - uart
+vendor: atmosic

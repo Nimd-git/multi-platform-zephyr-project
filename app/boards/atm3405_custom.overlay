@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// atm3405_custom（ATM3405-WQK，QFN 5x5，Cortex-M33F）板级设备树扩展：
+//   - plat-led0：桥接到板级 led0（gpio0 pin7），供 app_kernel_demo 翻转
+//   - platform-monitor：自研骨架驱动实例（纯软件设备，验证 DT_INST 实例化链路）
+//   - SPI/I2C：SoC 已提供，当前未启用（无外部设备连接）
+
+/ {
+	aliases {
+		plat-led0 = &led0;
+	};
+
+	plat_monitor0: platform-monitor {
+		compatible = "plat,platform-monitor";
+		report-interval-ms = <1000>;
+		status = "okay";
+	};
+};
+
+/* SPI0 / I2C0 由 SoC dtsi 提供，如需启用可在此追加 status = "okay" 和 pinctrl */

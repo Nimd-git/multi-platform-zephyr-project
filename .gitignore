@@ -1,0 +1,27 @@
+# Zephyr / west 构建产物
+build/
+*.dts_compiled
+zephyr_modules.txt
+
+# west 工作区本地配置与拉取的外部模块（由 west update 重建）
+.west/
+modules/
+
+# 上游源码（不随本仓库提交；新环境克隆后由 west update 拉取）
+zephyr/
+bootloader/mcuboot/
+tools/edtt/
+tools/net-tools/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# 上游仓库历史备份（重命名自 .git，仅本地保留，不提交）
+**/.git.upstream/
+
+# 编辑器
+.vscode/
+.idea/
+.trae/

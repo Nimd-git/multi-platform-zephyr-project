@@ -1,0 +1,162 @@
+; ============================================================
+; ATM3405 fast_load programming script (no-op ResetTarget)
+; Uses openair fast_load protocol to bypass FLM limitations
+; ============================================================
+
+si SWD
+speed 100
+connect
+halt
+speed 2000
+
+; ---- Phase 1: Load fast_load.bin to SRAM ----
+loadbin f:\src\zephyr_project\openair\modules\hal_atmosic\ATM34xx\rev-5\openocd\fast_load\fast_load.bin, 0x20000000
+
+; ---- Phase 2: PSEQ init ----
+w4 0x50153020, 0x1
+w4 0x40158050, 0x0
+w4 0x50153020, 0x0
+
+; ---- Phase 3: Set SP=0x20040000, PC=0x200051D1 (fast_load reset handler) ----
+w4 0xE000EDF8, 0x20040000
+w4 0xE000EDF4, 0x10009
+sleep 10
+w4 0xE000EDF8, 0x200051D1
+w4 0xE000EDF4, 0x1000F
+sleep 10
+
+; ---- Phase 4: Resume fast_load reset handler ----
+g
+sleep 500
+h
+
+; ---- Phase 5: Check magic numbers ----
+mem32 0x2001a37c, 4
+; Expected: 5F445753 4F47454E 00000102 20002571
+
+; ---- Phase 6: Read buf0_addr ----
+mem32 0x2001a38c, 1
+; Expected: 2001A638
+
+; ---- Phase 7: fl_ram_init ----
+; Write init command block: owner=1, opcode=1, size=0, addr=0
+w4 0x2001A638, 0x00000101
+w4 0x2001A63C, 0x00000000
+
+; Kick: set SP + PC to kick_program, resume
+w4 0xE000EDF8, 0x20040000
+w4 0xE000EDF4, 0x10009
+w4 0xE000EDF8, 0x20002571
+w4 0xE000EDF4, 0x1000F
+g
+sleep 300
+h
+
+; Check owner (byte 0, should be 0x00)
+mem32 0x2001A638, 1
+
+; ---- Phase 8: fl_ram_erase (erase all RRAM) ----
+; Write erase command block: owner=1, opcode=2, size=0xFFFF, addr=0x10000
+w4 0x2001A638, 0xFFFF0201
+w4 0x2001A63C, 0x00010000
+
+; Kick
+w4 0xE000EDF8, 0x20040000
+w4 0xE000EDF4, 0x10009
+w4 0xE000EDF8, 0x20002571
+w4 0xE000EDF4, 0x1000F
+g
+sleep 8000
+h
+
+; Check owner (should be 0x00)
+mem32 0x2001A638, 1
+
+; ---- Phase 9: Program chunk 0 (16384 bytes, offset=0x0) ----
+loadbin f:\src\zephyr_project\app\debug\zephyr_chunk_0.bin, 0x2001A640
+w4 0x2001A638, 0x40000101
+w4 0x2001A63C, 0x00010000
+w4 0xE000EDF8, 0x20040000
+w4 0xE000EDF4, 0x10009
+w4 0xE000EDF8, 0x20002571
+w4 0xE000EDF4, 0x1000F
+g
+sleep 500
+h
+mem32 0x2001A638, 1
+
+; ---- Phase 10: Program chunk 1 (16384 bytes, offset=0x4000) ----
+loadbin f:\src\zephyr_project\app\debug\zephyr_chunk_1.bin, 0x2001A640
+w4 0x2001A638, 0x40000101
+w4 0x2001A63C, 0x00014000
+w4 0xE000EDF8, 0x20040000
+w4 0xE000EDF4, 0x10009
+w4 0xE000EDF8, 0x20002571
+w4 0xE000EDF4, 0x1000F
+g
+sleep 500
+h
+mem32 0x2001A638, 1
+
+; ---- Phase 11: Program chunk 2 (16384 bytes, offset=0x8000) ----
+loadbin f:\src\zephyr_project\app\debug\zephyr_chunk_2.bin, 0x2001A640
+w4 0x2001A638, 0x40000101
+w4 0x2001A63C, 0x00018000
+w4 0xE000EDF8, 0x20040000
+w4 0xE000EDF4, 0x10009
+w4 0xE000EDF8, 0x20002571
+w4 0xE000EDF4, 0x1000F
+g
+sleep 500
+h
+mem32 0x2001A638, 1
+
+; ---- Phase 12: Program chunk 3 (16384 bytes, offset=0xC000) ----
+loadbin f:\src\zephyr_project\app\debug\zephyr_chunk_3.bin, 0x2001A640
+w4 0x2001A638, 0x40000101
+w4 0x2001A63C, 0x0001C000
+w4 0xE000EDF8, 0x20040000
+w4 0xE000EDF4, 0x10009
+w4 0xE000EDF8, 0x20002571
+w4 0xE000EDF4, 0x1000F
+g
+sleep 500
+h
+mem32 0x2001A638, 1
+
+; ---- Phase 13: Program chunk 4 (15140 bytes, offset=0x10000) ----
+loadbin f:\src\zephyr_project\app\debug\zephyr_chunk_4.bin, 0x2001A640
+w4 0x2001A638, 0x3B240101
+w4 0x2001A63C, 0x00020000
+w4 0xE000EDF8, 0x20040000
+w4 0xE000EDF4, 0x10009
+w4 0xE000EDF8, 0x20002571
+w4 0xE000EDF4, 0x1000F
+g
+sleep 500
+h
+mem32 0x2001A638, 1
+
+; ---- Phase 14: Verify RRAM content ----
+mem32 0x10010000, 4
+; Expected: 30005D28 100169D9 100162DD 100169C5
+mem32 0x10018000, 4
+; Expected: 49081020 6505E9CD 1F10F842 5113F44F
+mem32 0x10020000, 4
+; Expected: 1001E83D 00000000 1001E83D 00000000
+mem32 0x10023B14, 4
+; Expected: 30000194 00000000 00000001 E015E015
+
+; ---- Phase 15: Start firmware from RRAM (direct SP/PC, no ROM boot) ----
+; Set VTOR to RRAM vector table base
+w4 0xE000ED08, 0x10010000
+; Set SP from vector table word 0 (0x30005D28)
+w4 0xE000EDF8, 0x30005D28
+w4 0xE000EDF4, 0x10009
+; Set PC to reset handler from vector table word 1 (0x100169D9)
+w4 0xE000EDF8, 0x100169D9
+w4 0xE000EDF4, 0x1000F
+; Run firmware
+g
+sleep 100
+q

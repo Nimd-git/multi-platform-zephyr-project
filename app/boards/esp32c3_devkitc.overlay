@@ -1,0 +1,40 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// esp32c3_devkitc（乐鑫 ESP32-C3-DevKitC-02，32 位单核 RISC-V，WROOM-02 模组）
+// 板级设备树扩展：
+//   - plat-led0：复用片上 gpio0 的 8 脚（板载 WS2812 可寻址 RGB 灯的数据线）。
+//     骨架按普通 GPIO 演示电平翻转（日志可见 led 状态变化）；WS2812 需要专用
+//     单线协议，普通 GPIO 翻转不会产生可见闪烁，属预期现象。
+//   - platform-monitor：自研骨架驱动实例（纯软件设备，验证 DT_INST 实例化链路）
+//
+// gpio0 控制器节点由 zephyr/dts/riscv/espressif/esp32c3/esp32c3_common.dtsi 提供，
+// 板级 esp32c3_devkitc.dts 已将其 status = "okay"，此处直接引用。
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	aliases {
+		plat-led0 = &plat_led0;
+	};
+
+	chosen {
+		/* 日志/控制台走内置 USB Serial/JTAG（GPIO18/19，PC 端 COM16，免外部器件）；
+		 * Zephyr shell 独占物理 UART0（TX=GPIO21/RX=GPIO20，需外接 USB-TTL）。
+		 * 两者分离后 LOG 不再经过 shell 后端，无提示符重绘噪声。 */
+		zephyr,console = &usb_serial;
+		zephyr,shell-uart = &uart0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		plat_led0: plat-led0 {
+			gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+	plat_monitor0: platform-monitor {
+		compatible = "plat,platform-monitor";
+		report-interval-ms = <1000>;
+		status = "okay";
+	};
+};

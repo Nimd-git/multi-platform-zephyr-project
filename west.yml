@@ -1,0 +1,28 @@
+# 工作区级 west 清单
+#
+# 本仓库只提交自有代码（platform/、app/、scripts/、docs/），zephyr/ 与其余
+# 上游模块不入库。新环境克隆本仓库后，执行以下命令即可重建完整工作区：
+#
+#     west init -l .
+#     west update            # 拉取 zephyr（已锁定到下方 SHA）及全部上游模块
+#
+# 本清单导入 zephyr/west.yml（其中已按 SHA 锁定 cmsis、hal_* 等全部上游
+# 模块版本，对应架构图“构建系统 - west manifest 版本锁定”）。
+
+manifest:
+  projects:
+    # Zephyr 上游仓库，SHA 与当前开发基线一致（v4.4.0-2679）
+    - name: zephyr
+      url: https://github.com/zephyrproject-rtos/zephyr.git
+      revision: 4b02c5d60ae620fb23cbea58516e3ea7388c2f75
+      import: west.yml
+
+    # Atmosic SDK（原 openair/，已迁移至 modules/hal/atmosic 并由 manifest 管理）
+    # 提供 ATM34xx SoC 定义、HAL、驱动、预编译库与 atmisp runner。
+    - name: atmosic
+      url: https://github.com/Atmosic/openair.git
+      revision: 82c9dc9
+      path: modules/hal/atmosic
+
+  # platform/ 与 app/ 位于清单仓库本身（工作区根），无需声明为 west project；
+  # 平台模块通过应用 CMakeLists.txt 中的 ZEPHYR_EXTRA_MODULES 挂接。

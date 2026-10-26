@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# ATM3405 定制板 Kconfig。
+
+config BOARD_ATM3405_CUSTOM
+	select SOC_ATM34XX_5

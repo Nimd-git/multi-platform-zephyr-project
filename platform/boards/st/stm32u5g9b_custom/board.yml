@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# 树外板卡（HW v2）描述文件。
+# 发现机制：platform/zephyr/module.yml 中 build.settings.board_root = "."
+# list_boards.py 会 rglob <board_root>/boards 下所有 board.yml。
+
+board:
+  name: stm32u5g9b_custom
+  full_name: STM32U5G9BJY6Q Custom Board
+  vendor: st
+  socs:
+    - name: stm32u5g9xx

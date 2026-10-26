@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# 架构图左侧“版本兼容与适配”纵柱：
+#   - API 兼容层（版本宏隔离/废弃接口兼容）：见 include/platform/plat_version.h
+#   - Kconfig 兼容（配置项映射/旧选项迁移）：本文件
+#   - DT 兼容层（设备树绑定兼容/属性名映射）：dts/bindings 中的绑定描述
+#   - HAL 适配层（多版本 HAL 共存/厂商驱动适配）：hal/Kconfig
+#
+# 旧选项迁移标准写法：保留旧符号为隐藏 bool，default y，并 select 新符号。
+# 用户旧工程的 prj.conf 无需改动即可获得新行为；迁移期过后删除旧符号。
+#
+# 示例（当前树中暂无历史包袱，保留模板供后续使用）:
+#
+# config OLD_GPIO_POLL_API
+# 	bool
+# 	default y
+# 	select GPIO
+# 	select PLAT_GPIO_POLL_COMPAT
+#
+# config PLAT_GPIO_POLL_COMPAT
+# 	bool "Provide legacy polling GPIO API"
+# 	help
+# 	  旧版本平台使用的轮询式 GPIO 接口，建议新代码直接使用 plat_gpio.h。
+
+config PLAT_ENABLE_DEPRECATED_API
+	bool "Keep deprecated platform API compatibility shims"
+	default y
+	depends on PLATFORM_SERVICES
+	help
+	  在 plat_version.h 中保留 PLAT_DEPRECATED_SINCE() 标记的旧 API 内联
+	  封装。产品固件稳定后可关闭此项以回收代码体积。

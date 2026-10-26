@@ -1,0 +1,104 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# ATM3405 定制板 Kconfig.defconfig
+# 从 openair boards/atmosic/atm34evk/Kconfig.defconfig 精简而来，
+# 保留 no-TZ 用户应用模式所需的最小配置集。
+
+if SOC_ATM34XX_5
+
+config CORTEX_M_SYSTICK
+	bool
+	default y
+
+config RUNTIME_NMI
+	bool
+	default y
+
+config USE_DT_CODE_PARTITION
+	bool
+	default y
+
+config ARM_MPU
+	bool
+	default y
+
+config HW_STACK_PROTECTION
+	bool
+	default y
+
+config ARM_TRUSTZONE_M
+	bool
+	default y
+
+config ARM_SECURE_BUSFAULT_HARDFAULT_NMI
+	default y if TRUSTED_EXECUTION_SECURE
+
+config TRUSTED_EXECUTION_SECURE
+	bool
+	default y
+	depends on !$(dt_nodelabel_bool_prop,sec_tz,ns_app)
+
+config TRUSTED_EXECUTION_NONSECURE
+	bool
+	default y
+	depends on $(dt_nodelabel_bool_prop,sec_tz,ns_app)
+
+config SERIAL
+	bool
+	default y
+
+config CONSOLE
+	bool
+	default y
+
+config UART_CONSOLE
+	bool
+	default y
+
+config GPIO
+	bool
+	default y
+
+config BUILD_OUTPUT_HEX
+	default y
+
+# 暂时关闭 PM：openair power.c 调用 sys_clock_correct(),
+# 该函数在 Zephyr v4.4 不存在，需要后续移植 PM 子系统时解决。
+config PM
+	default n
+
+if PM
+
+config IDLE_STACK_SIZE
+	int
+	default 1024
+
+endif # PM
+
+config ATM_NO_SPE
+	bool
+	help
+	  Application will operate a single secure image without the SPE.
+
+config ATM_NO_TZ
+	bool
+	default y
+	select ATM_NO_SPE
+	depends on !DT_HAS_ATMOSIC_SEC_TZ_ENABLED
+	depends on !MCUBOOT
+	depends on !TRUSTED_EXECUTION_NONSECURE
+	help
+	  No TrustZone: single application as a secure image without SPE.
+
+if SERIAL
+
+config UART_INTERRUPT_DRIVEN
+	default y
+
+endif # SERIAL
+
+config HEAP_MEM_POOL_ADD_SIZE_BOARD
+	int
+	default 512
+
+endif # SOC_ATM34XX_5

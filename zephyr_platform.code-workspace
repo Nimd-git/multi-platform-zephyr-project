@@ -1,0 +1,45 @@
+{
+    // 用 TRAE/VS Code 打开本文件进入多根工作区：
+    //   - west 根（本仓库，含 .west / zephyr / platform）
+    //   - app（冒烟应用，Workbench 应用级设置在 app/.vscode/settings.json）
+    "folders": [
+        {
+            "name": "platform-workspace (west root)",
+            "path": "."
+        },
+        {
+            "name": "smoke-app",
+            "path": "app"
+        }
+    ],
+    "settings": {
+        "terminal.integrated.stickyScroll.enabled": false,
+
+        // ---- Workbench for Zephyr ----
+        // 标识 west 工作区根；应用绑定关系在 app 文件夹设置中
+        "zephyr-workbench.westWorkspace": "${workspaceFolder:platform-workspace (west root)}",
+        // 复用 scripts/bootstrap.ps1 创建的 Python 3.12 虚拟环境（内含 west/cmake）
+        "zephyr-workbench.venv.path": "${workspaceFolder:platform-workspace (west root)}/.venv",
+
+        // ---- 集成终端直接具备 west 构建环境（与 scripts/env.ps1 等价） ----
+        "terminal.integrated.env.windows": {
+            "ZEPHYR_SDK_INSTALL_DIR": "E:/zephyr-sdk/toolchains/zephyr-sdk-1.0.1",
+            "ZEPHYR_TOOLCHAIN_VARIANT": "zephyr",
+            "ZEPHYR_BASE": "${workspaceFolder:platform-workspace (west root)}/zephyr",
+            // west flash 从 ZEPHYR_EXTRA_MODULES 发现模块自定义 runner（atmfastload/atmisp）；
+            // atmosic 已由 west manifest（modules/hal/atmosic）管理；
+            // uwbiot（SR040 UWB）与 platform 仍须经此注入
+            "ZEPHYR_EXTRA_MODULES": "${workspaceFolder:platform-workspace (west root)}/modules/uwb/uwbiot;${workspaceFolder:platform-workspace (west root)}/platform",
+            "Path": "${workspaceFolder:platform-workspace (west root)}/.venv/Scripts;${env:LOCALAPPDATA}/Microsoft/WinGet/Packages/oss-winget.dtc_Microsoft.Winget.Source_8wekyb3d8bbwe/usr/bin;${env:LOCALAPPDATA}/Microsoft/WinGet/Links;C:/ProgramData/chocolatey/bin;${env:Path}"
+        },
+
+        // ---- C/C++ 智能提示：使用构建目录生成的 compile_commands.json ----
+        "C_Cpp.default.compileCommands": "${workspaceFolder:platform-workspace (west root)}/build/qemu_cortex_m3/compile_commands.json",
+        "clangd.arguments": [
+            "--compile-commands-dir=${workspaceFolder:platform-workspace (west root)}/build/qemu_cortex_m3"
+        ]
+	},
+	"trae": {
+		"workspaceId": "46ee7131df1d12ca0d56a5b0b85840af"
+	}
+}

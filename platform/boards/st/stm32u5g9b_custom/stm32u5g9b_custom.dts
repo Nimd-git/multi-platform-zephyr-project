@@ -1,0 +1,72 @@
+/*
+ * Copyright (c) 2026
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <st/u5/stm32u5g9Xj.dtsi>
+#include <st/u5/stm32u5g9bjyxq-pinctrl.dtsi>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/ {
+	model = "STM32U5G9BJY6Q custom board";
+	compatible = "st,stm32u5g9b-custom";
+
+	chosen {
+		zephyr,console = &usart1;
+		zephyr,shell-uart = &usart1;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+
+		/* 用户按键接 PE4，按下为低电平，使能内部上拉 */
+		user_button: button_0 {
+			label = "User";
+			gpios = <&gpioe 4 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	aliases {
+		sw0 = &user_button;
+	};
+};
+
+/* 外部 16MHz HSE 晶振（PH0/PH1） */
+&clk_hse {
+	clock-frequency = <DT_FREQ_M(16)>;
+	status = "okay";
+};
+
+/* PLL1: 16MHz / M(2) = 8MHz，× N(20) = 160MHz VCO，/ R(1) = 160MHz */
+&pll1 {
+	div-m = <2>;
+	mul-n = <20>;
+	div-p = <2>;
+	div-q = <2>;
+	div-r = <1>;
+	clocks = <&clk_hse>;
+	status = "okay";
+};
+
+&rcc {
+	clocks = <&pll1>;
+	clock-frequency = <DT_FREQ_M(160)>;
+	ahb-prescaler = <1>;
+	apb1-prescaler = <1>;
+	apb2-prescaler = <1>;
+	apb3-prescaler = <1>;
+};
+
+/* 控制台/shell：USART1，TX=PA9，RX=PA10 */
+&usart1 {
+	pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pa10>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "okay";
+};

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# STM32F407VET6 定制板（LQFP100，512KB Flash，192KB RAM）。
+# 发现机制：platform/zephyr/module.yml 中 build.settings.board_root = "."
+
+board:
+  name: stm32f407ve_custom
+  full_name: STM32F407VET6 Custom Board
+  vendor: st
+  socs:
+    - name: stm32f407xx

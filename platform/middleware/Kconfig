@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# 架构图“应用开发层”的中间件：通信（Modbus）/ 数据（JSON/CBOR）/
+# UWB（SR040）/ 存储（settings KV）。图形（LVGL）暂不集成，保留占位。
+
+menu "Platform middleware"
+
+rsource "communication/Kconfig"
+rsource "data/Kconfig"
+rsource "uwb/Kconfig"
+rsource "storage/Kconfig"
+
+config PLAT_MW_GUI
+	bool "GUI middleware skeleton (LVGL/display/touch)"
+	default n
+	depends on PLATFORM_SERVICES
+	help
+	  规划：LVGL 图形库集成、显示驱动与触摸输入、图形加速适配。
+	  当前阶段暂不集成（用户决定以 UWB SR040 替代）。
+
+endmenu

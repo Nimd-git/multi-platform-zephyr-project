@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# 硬件抽象层：驱动 API 标准化（GPIO/UART/SPI/I2C）+ 自研驱动骨架
+
+menu "Platform drivers"
+
+config PLAT_GPIO
+	bool "GPIO unified abstraction (output/input/interrupt/LED)"
+	default y
+	depends on GPIO
+	help
+	  GPIO 平台统一封装，提供输出/输入/中断/LED 标准操作接口。
+
+config PLAT_UART
+	bool "UART unified abstraction (poll/interrupt/RS485-ready)"
+	default y
+	depends on SERIAL
+	help
+	  UART 平台统一封装，提供轮询收发、中断接收、RS485 方向控制预留。
+
+config PLAT_SPI
+	bool "SPI unified abstraction (master transceive/CS control)"
+	default y
+	depends on SPI
+	help
+	  SPI 平台统一封装，提供标准全双工传输、CS 控制、寄存器读写。
+
+config PLAT_I2C
+	bool "I2C unified abstraction (master read/write/scan)"
+	default y
+	depends on I2C
+	help
+	  I2C 平台统一封装，提供标准读写、寄存器访问、总线扫描。
+
+rsource "skeleton/Kconfig"
+
+endmenu

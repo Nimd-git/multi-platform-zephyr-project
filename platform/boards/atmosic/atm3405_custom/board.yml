@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# ATM3405 定制板（ATMEVK-3405-WQK-5，QFN 5x5，Cortex-M33F）。
+# 发现机制：platform/zephyr/module.yml 中 build.settings.board_root = "."
+# SoC 定义由 openair 模块的 soc_root 提供。
+
+board:
+  name: atm3405_custom
+  full_name: ATM3405 Custom Board
+  vendor: atmosic
+  socs:
+    - name: ATM34xx-5

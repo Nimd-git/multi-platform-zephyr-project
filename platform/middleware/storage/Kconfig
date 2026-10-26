@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# 存储中间件：日志文件系统/键值存储、数据备份恢复/数据校验。
+# 当前实现 plat_kv：上游 settings 的薄封装，QEMU 下以 SETTINGS_NONE
+# （RAM）运行；真实板卡切换 SETTINGS_FCB/SETTINGS_FILE + LittleFS/NFFS
+# 后，应用层接口保持不变。
+
+config PLAT_MW_STORAGE
+	bool "Key-value storage middleware (settings based)"
+	default y
+	depends on PLATFORM_SERVICES
+	select SETTINGS
+	select SETTINGS_RUNTIME
+	help
+	  提供 plat_kv_init/plat_kv_get/plat_kv_set 统一 KV 接口，
+	  对应用屏蔽后端差异（RAM/FCB/File/NVS）。
