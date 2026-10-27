@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: Apache-2.0
+﻿﻿# SPDX-License-Identifier: Apache-2.0
 #
 # 平台工作区构建环境加载脚本（需 dot-source 方式加载）:
 #
@@ -42,6 +42,14 @@ $chocoBin = "C:\ProgramData\chocolatey\bin"
 if ((Test-Path $chocoBin) -and ($env:Path -notlike "*$chocoBin*")) {
     $env:Path = "$chocoBin;$env:Path"
 }
+
+# ---- 3.5 esptool.cmd wrapper ----------------------------------------------
+# pip 的 esptool.exe entry point 在嵌套 cmd.exe /C（ninja POST_BUILD 链）里
+# 会静默退出（exit 1，无任何输出）；scripts\esptool.cmd 改用 python -m esptool。
+# 必须放在本文件最后：上面所有注入都是 prepend，这段放最后才能让 scripts\
+# 真正处于 PATH 首位，使 PATHEXT 搜索先命中 esptool.cmd 而非 .venv\Scripts\esptool.exe。
+
+$env:Path = "$PSScriptRoot;$env:Path"
 
 # ---- 3. Zephyr SDK 1.0.1（与 zephyr/SDK_VERSION 锁定版本一致） ------------
 $sdkDir = if ($env:ZEPHYR_SDK_INSTALL_DIR) {

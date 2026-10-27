@@ -23,11 +23,12 @@
 
         // ---- 集成终端直接具备 west 构建环境（与 scripts/env.ps1 等价） ----
         "terminal.integrated.env.windows": {
-            "ZEPHYR_SDK_INSTALL_DIR": "E:/zephyr-sdk/toolchains/zephyr-sdk-1.0.1",
+            // SDK 为机器级外部依赖：各开发者设置该环境变量即可，无需改本文件
+            "ZEPHYR_SDK_INSTALL_DIR": "${env:ZEPHYR_SDK_INSTALL_DIR}",
             "ZEPHYR_TOOLCHAIN_VARIANT": "zephyr",
             "ZEPHYR_BASE": "${workspaceFolder:platform-workspace (west root)}/zephyr",
             // west flash 从 ZEPHYR_EXTRA_MODULES 发现模块自定义 runner（atmfastload/atmisp）；
-            // atmosic 已由 west manifest（modules/hal/atmosic）管理；
+            // atmosic（openair）由 app/CMakeLists.txt 仅在 atm3405 时注入；
             // uwbiot（SR040 UWB）与 platform 仍须经此注入
             "ZEPHYR_EXTRA_MODULES": "${workspaceFolder:platform-workspace (west root)}/modules/uwb/uwbiot;${workspaceFolder:platform-workspace (west root)}/platform",
             "Path": "${workspaceFolder:platform-workspace (west root)}/.venv/Scripts;${env:LOCALAPPDATA}/Microsoft/WinGet/Packages/oss-winget.dtc_Microsoft.Winget.Source_8wekyb3d8bbwe/usr/bin;${env:LOCALAPPDATA}/Microsoft/WinGet/Links;C:/ProgramData/chocolatey/bin;${env:Path}"

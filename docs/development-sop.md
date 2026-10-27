@@ -102,10 +102,9 @@ powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Full
 |---|---|---|
 | `ZEPHYR_BASE` | `<工作区根>\zephyr` | `scripts/env.ps1`、workspace 文件、`build_all.ps1` |
 | `ZEPHYR_TOOLCHAIN_VARIANT` | `zephyr` | 同上 |
-| `ZEPHYR_SDK_INSTALL_DIR` | `E:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1` | 同上 |
+| `ZEPHYR_SDK_INSTALL_DIR` | 外部 SDK 安装目录（本机默认 `E:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1`） | `scripts/env.ps1`（环境变量优先，未设置才用默认值） |
 | `ZEPHYR_EXTRA_MODULES` | `...\modules\uwb\uwbiot;...\platform` | **必须**在 `zephyr_platform.code-workspace` 的 `terminal.integrated.env.windows` 中（VS Code 集成终端）与 `app/build_all.ps1` 中（CLI） |
-| `ESPRESSIF_TOOLCHAIN_PATH` | `C:\Users\<user>\.zinstaller\tools\openocds\openocd-esp32` | `build_all.ps1`；`app/CMakeLists.txt` 另有 CMake 变量注入 |
-| `OPENOCD_DEFAULT_PATH` | `...\openocd-esp32\share\openocd\scripts` | 同上，确保用乐鑫 fork 脚本 |
+| `ESPRESSIF_TOOLCHAIN_PATH`（可选） | `%USERPROFILE%\.zinstaller\tools\openocds` | 不设时 `app/CMakeLists.txt` 自动回退到该 Workbench 默认位置；OpenOCD 在其他位置时设置此变量即可 |
 
 > 注意：`ZEPHYR_EXTRA_MODULES` 不会从父进程可靠继承。VS Code 插件终端以 workspace 文件为准，
 > 改完需 **Reload Window**；命令行以 `build_all.ps1` 设置的值或手动 `$env:` 为准。
@@ -115,11 +114,41 @@ powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Full
 | 模块 | 路径 | 注入方式 |
 |---|---|---|
 | `platform` | `platform/` | `ZEPHYR_EXTRA_MODULES` + `app/CMakeLists.txt` 中的 `list(APPEND ...)` |
-| `openair`（Atmosic） | `modules/hal/atmosic` | 根 `west.yml` manifest（atm3405 专用） |
+| `openair`（Atmosic） | `modules/hal/atmosic` | `app/CMakeLists.txt` 中仅在 `BOARD=atm3405_custom` 时 `list(APPEND ZEPHYR_EXTRA_MODULES ...)`（atm3405 专用） |
 | `nxp-uwbiot`（SR040） | `modules/uwb/uwbiot` | `ZEPHYR_EXTRA_MODULES`（三块板均注入；无 DT 节点时仅编译 Kconfig） |
+
+> 本机 `.west/config` 的清单是 `zephyr/west.yml`（`west init -l zephyr` 的产物），根 `west.yml` 中的
+> `atmosic` 项目不会被 `west list` 发现；因此 Atmosic 改为按板卡在 CMake 期注入，避免其他板卡加载。
 
 `platform/zephyr/module.yml` 关键点：`dts_root: .`、`board_root: .`（v4.4 不再隐式发现模块 DTS/板卡目录），
 以及自定义 west runner `atmfastload`。
+
+### 3.5 绝对路径清单与可移植方案
+
+仓库内不应出现当前用户/当前目录的绝对路径；外部工具（SDK、OpenOCD）用环境变量注入。
+
+| 位置 | 原写法 | 现方案 |
+|---|---|---|
+| `app/CMakeLists.txt` ESP OpenOCD | `C:/Users/12968399/.zinstaller/tools/openocds` | 优先 `$ENV{ESPRESSIF_TOOLCHAIN_PATH}`，否则 `$ENV{USERPROFILE}/.zinstaller/tools/openocds` |
+| `app/build_all.ps1` SDK / venv / OpenOCD | `E:\zephyr-sdk\...`、`C:\Users\...` | 只 dot-source `scripts\env.ps1`，不再重复硬编码 |
+| `scripts/bootstrap.ps1` 7-Zip / SDK | `C:\Program Files\7-Zip`、`E:\zephyr-sdk\...` | `$env:ProgramFiles`；SDK 取 `ZEPHYR_SDK_INSTALL_DIR`（未设置才用本机默认） |
+| `scripts/env.ps1` SDK | 固定 `E:\...` | 环境变量优先，默认值仅为本机约定；其他开发者设置 `ZEPHYR_SDK_INSTALL_DIR` 即可 |
+| `zephyr_platform.code-workspace` SDK | `E:/zephyr-sdk/...` | 改为 `${env:ZEPHYR_SDK_INSTALL_DIR}`；开发者只需设置环境变量 |
+| `app/.vscode/settings.json` SDK | `E:/zephyr-sdk/...` | 本机 IDE 级设置（不入库）；Workbench 面板里选择本机 SDK 路径 |
+| `%USERPROFILE%\.zinstaller\env.ps1` | 旧工作区 `F:\src\zephyr_project` | 机器级文件，不属于仓库；新机器用 `zephyr-workbench-env` 技能重新生成（路径由当前工作区推导） |
+| `zephyr/`、`modules/`、`.venv/`、`app/build/` | — | 不纳入版本管理，一律由脚本按工作区相对路径生成 |
+
+其他开发者首次配置只需两步（`<root>` 为克隆目录）：
+
+```powershell
+# 1) 指定本机 SDK（写用户环境变量，重开终端生效）
+setx ZEPHYR_SDK_INSTALL_DIR "D:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1"
+# 2) 在工作区根初始化并构建
+cd <root>; powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1
+```
+
+OpenOCD 若不在 Workbench 默认目录（`%USERPROFILE%\.zinstaller\tools\openocds`），同样设置
+`ESPRESSIF_TOOLCHAIN_PATH` 指向 openocds 根目录。
 
 ---
 
@@ -136,18 +165,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File app\build_all.ps1
 
 ```powershell
 # 以下命令假设当前目录为工作区根（仓库内部一律使用相对路径）
-$env:ZEPHYR_BASE="$PWD\zephyr"
-$env:ZEPHYR_SDK_INSTALL_DIR='E:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1'
-$env:ZEPHYR_TOOLCHAIN_VARIANT='zephyr'
+. .\scripts\env.ps1   # 统一设置 venv/SDK/ZEPHYR_BASE/PATH
 $env:ZEPHYR_EXTRA_MODULES="$PWD\modules\uwb\uwbiot;$PWD\platform"
-$env:PATH="$PWD\.venv\Scripts;"+$env:PATH
 
 # esp32c6
 west build -p always -b esp32c6_devkitc/esp32c6/hpcore -d app/build/esp32c6_devkitc app
 # stm32f407
 west build -p always -b stm32f407ve_custom -d app/build/stm32f407ve_custom app
-# atm3405（ExtraModules 需追加 atmosic）
-$env:ZEPHYR_EXTRA_MODULES="$PWD\modules\hal\atmosic;$PWD\modules\uwb\uwbiot;$PWD\platform"
+# atm3405（atmosic 由 app/CMakeLists.txt 按 BOARD 自动追加，无需手改）
 west build -p always -b atm3405_custom -d app/build/atm3405_custom app
 ```
 

@@ -6,6 +6,125 @@
 
 ---
 
+## 2026-10-27 · 上位机工具增加「环境变量配置」检测与一键写入
+
+**目标**：让其他开发者首次打开工具就能看到要配哪些环境变量、各变量用途、路径示例，
+并通过「一键配置缺失项」自动写入用户级注册表（HKCU），避免手写 setx 命令。
+
+**改动（`F:\src\zephyr_workbench`）**：
+- `core/probe.py`：
+  - 新增 `_read_user_env(name)` 用 `winreg` 直接读 HKCU\Environment，
+    区分"进程继承的 os.environ"和"用户级持久设置"。
+  - 新增 `_ps_set_user_env(name, value)` 返回 PowerShell `SetEnvironmentVariable('X','Y','User')`
+    命令列表（供 fix 机制自动执行）。**选 SetEnvironmentVariable 而非 setx**：后者截断 1024 字符、
+    不展开 `%USERPROFILE%`、且注册表存字面量 `%USERPROFILE%` 导致工具读取后路径错。
+  - 新增 `_resolve_user_profile()`、`workspace_env()` 里也改为优先 HKCU。
+  - 新增 **「环境变量配置」分组** 的三条检查项：ZEPHYR_SDK_INSTALL_DIR（必须，未持久设为 MISSING）、
+    ZEPHYR_TOOLCHAIN_VARIANT（必须，值不为 zephyr 为 WARN）、ESPRESSIF_TOOLCHAIN_PATH（可选，
+    未安装 OpenOCD 时 WARN + 安装指引，fix 提供默位置写入）。
+  - SDK 已就位但未持久设 env 时，SDK 项升级为 WARN + hint 提示换机器后可能失效。
+  - `_find_openocd` 也改为 HKCU 优先，并增加 `openocds` 根目录候选（兼容新语义）。
+- `core/steps.py`：WORKFLOW_TEXT 最前面新增"零、首次配置环境变量"章节，列出三条 setx 命令、
+  SDK 下载链接，并告知可在工具内一键配置。
+
+**用户视角**：
+- 环境检测页现在多三条「环境变量配置」行，颜色/状态一目了然；
+- 点「一键配置缺失项」会弹出确认 → 执行 PowerShell 写 HKCU → 自动重检；
+- 也可看「开发流程」文本里的 setx 命令手工配。
+
+**验证**：Python 源码语法人工通读正确；Shell 工具间歇性启动失败未能跑 py_compile 与工具 GUI 冒烟，
+建议在本机 `python -m py_compile core/probe.py core/steps.py` 后运行上位机工具点一次「开始检测」+「一键配置」。
+
+---
+
+## 2026-10-27 · 写入用户环境变量，并同步可移植改动到上位机工具
+
+**目标**：把本轮环境/路径改动落到本机用户级环境变量，并同步到 `F:\src\zephyr_workbench`。
+
+**环境变量（用户级，已写入，重开终端生效）**：
+- `ZEPHYR_SDK_INSTALL_DIR = E:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1`
+- `ZEPHYR_TOOLCHAIN_VARIANT = zephyr`
+- `ESPRESSIF_TOOLCHAIN_PATH = %USERPROFILE%\.zinstaller\tools\openocds`（openocds 根，其下含
+  `openocd-esp32`，与 `app/CMakeLists.txt` 的新语义一致）
+- 未写入 `ZEPHYR_BASE` / `ZEPHYR_EXTRA_MODULES`：二者与具体工作区绑定，继续由
+  `scripts/env.ps1` 和 `.code-workspace` 提供。
+
+**上位机工具（F:\src\zephyr_workbench）改动**：
+- `core/settings.py`：默认工作区不再写死 `F:\src\...`，改为 `ZEPHYR_WORKSPACE` 环境变量
+  + `%USERPROFILE%\src\multi-platform-zephyr-project` 探测。
+- `core/probe.py`：OpenOCD 提示改为只需 `ESPRESSIF_TOOLCHAIN_PATH`（指向 openocds 根），
+  不再要求 `OPENOCD_DEFAULT_PATH`。
+- `app.py`：工作区示例/对话框默认目录改为用户目录推导，去掉 `F:\src`。
+- `ZephyrWorkbench.spec`：`pathex`、`datas`、`icon` 改为基于 `SPECPATH` 推导。
+- `build-desktop.ps1` / `run_gui.bat` 检查后无绝对路径，未改动；`build/`、`dist/` 为生成物。
+
+**验证**：上位机源码已无 `F:\src` / `E:\zephyr-sdk` 硬编码（生成目录除外）；环境变量写入命令
+执行成功。未重新打包 exe，如需分发需运行 `build-desktop.ps1`。
+
+---
+
+## 2026-10-27 · 绝对路径清理：仓库内改为相对/环境变量，适配其他开发者
+
+**目标**：清除仓库内与特定用户、特定盘符绑定的绝对路径，使新开发者只需设置自己的 SDK/OpenOCD
+环境变量即可构建。
+
+**改动**：
+- `app/CMakeLists.txt`：ESP OpenOCD 不再写死 `C:/Users/12968399/...`；优先
+  `$ENV{ESPRESSIF_TOOLCHAIN_PATH}`，否则回退 `$ENV{USERPROFILE}/.zinstaller/tools/openocds`。
+- `app/build_all.ps1`：删除 SDK / venv / OpenOCD / ZEPHYR_BASE 的重复硬编码，改为
+  dot-source `scripts\env.ps1`（单点维护）。
+- `scripts/bootstrap.ps1`：7-Zip 改用 `$env:ProgramFiles`；SDK 改用 `ZEPHYR_SDK_INSTALL_DIR`。
+- `zephyr_platform.code-workspace`：SDK 改为 `${env:ZEPHYR_SDK_INSTALL_DIR}`。
+- `.trae/skills/zephyr-workbench-env/SKILL.md`：命令与链接去掉旧工作区 `f:\src\zephyr_project`，
+  改为工作区根相对路径。
+- `docs/development-sop.md`：新增 3.5「绝对路径清单与可移植方案」，并更新 3.3/3.4/4.1 中已失效的
+  openair/west manifest 与绝对 SDK 说明。
+
+**关键决策**：外部工具（Zephyr SDK、OpenOCD）无法相对化，统一用环境变量注入；仓库内路径
+（app、platform、modules、build）一律相对工作区根。`%USERPROFILE%\.zinstaller\env.ps1` 是机器级
+文件，不纳入仓库。
+
+**验证**：grep 排除 `zephyr/modules/.venv/app/build` 后，仓库内已无当前用户名绝对路径；
+SDK/OpenOCD 的机器默认值仅保留在 `scripts/env.ps1`、`bootstrap.ps1` 的回退分支与文档说明中。
+
+**遗留**：`app/.vscode/settings.json` 仍为本机 SDK 绝对路径（未入库）；新开发者需在 Workbench 面板
+选择本机 SDK。
+
+---
+
+## 2026-10-27 · 修复 atm3405_custom 构建时 SoC 'ATM34xx-5' 未找到
+
+**目标**：Workbench / 普通 `west build` 直接构建 atm3405_custom 时不再报
+`SoC 'ATM34xx-5' is not found ... soc-root containing 'ATM34xx-5' has been correctly defined`。
+
+**根因**：本机 `.west/config` 的 `[manifest] path = zephyr`，即 west 使用 `zephyr/west.yml` 作为清单，
+根 `west.yml` 中声明的 `atmosic`（openair）项目不会被 `west list` 发现。atm3405 的 SoC 定义
+（`modules/hal/atmosic/soc/atmosic/soc.yml`）因此不在 soc_root 中；`platform` 模块因走
+`ZEPHYR_EXTRA_MODULES` 仍能被发现，所以表现为"板找到了、SoC 找不到"。
+
+**改动**：
+- `app/CMakeLists.txt`：在 `find_package(Zephyr)` 前，仅当 `BOARD == atm3405_custom` 时把
+  `modules/hal/atmosic` 加入 `ZEPHYR_EXTRA_MODULES`（与 `app/build_all.ps1` 按板卡拆分的策略一致），
+  修正原有"atmosic 已由 west manifest 管理"的失效注释。
+- `app/CMakeLists.txt`：`find_package(Zephyr ... HINTS)` 增加工作区 `../zephyr` 回退路径。
+  原命令只加载 Workbench 的 `.zinstaller\env.ps1`，此前靠旧构建目录里缓存的 `Zephyr_DIR`
+  才能找到包；`--pristine` 清空缓存后即报
+  `Could not find a package configuration file provided by "Zephyr"`。
+- `%USERPROFILE%\.zinstaller\env.ps1`（仓库外，Workbench 插件实际加载的脚本）：仍指向重命名前的
+  `F:\src\zephyr_project`。已更新 `$proj_venv`、`ZEPHYR_BASE`、`ZEPHYR_EXTRA_MODULES`
+  （改为 `modules\uwb\uwbiot;platform`；atmosic 由 app/CMakeLists 按板卡挂接）。
+  ZEPHYR_BASE 指向旧路径时，`include(zephyr_default)` 会失败，并连带退回宿主 MSYS2 GCC。
+- 删除已被旧路径污染的 `app\build\atm3405_custom`，避免 `--pristine never` 复用缓存里的
+  `ZEPHYR_BASE:F:/src/zephyr_project/zephyr` 与 `Zephyr_DIR`。
+
+**验证**：本次会话 Shell 工具间歇性无法启动进程，未能完成构建复跑；环境脚本与缓存已修正，
+需在 IDE 点击构建或重新执行命令确认。
+
+**遗留**：`.west/config` 与根 `west.yml` 的清单级设计仍不一致；若后续改为 `west init -l .`
+（使用根清单），可移除本处的按板卡挂接。
+
+---
+
 ## 2026-10-26 · 工作区重命名为 multi-platform-zephyr-project，全面去绝对路径
 
 **目标**：项目根目录由 `zephyr_project` 更名为 `multi-platform-zephyr-project`（用户脚本执行），

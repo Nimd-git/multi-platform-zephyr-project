@@ -9,7 +9,8 @@
 # 前置条件（已装会自动跳过）:
 #   - Python 3.12（py 启动器）、Git
 #   - winget（用于安装 dtc / gperf；cmake 与 west 装入工作区 .venv，免管理员权限）
-#   - Zephyr SDK 1.0.1 已解压到 E:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1
+#   - Zephyr SDK 1.0.1 已解压，路径由 ZEPHYR_SDK_INSTALL_DIR 指定
+#     （未设置时默认 E:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1，仅为本机约定）
 #     （版本由 zephyr\SDK_VERSION 锁定；需含 arm-zephyr-eabi 与 riscv64-zephyr-elf 工具链）
 
 [CmdletBinding()]
@@ -55,10 +56,15 @@ if ($Full) {
 }
 
 # 5. 注册 Zephyr SDK 的 CMake 包（setup.cmd 需要 cmake 与 7z 在 PATH）
-$sevenZip = "C:\Program Files\7-Zip"
+$sevenZip = Join-Path $env:ProgramFiles "7-Zip"
 if (Test-Path $sevenZip) { $env:Path = "$sevenZip;$env:Path" }
 $env:Path = "$venvDir\Scripts;$env:Path"
-$setupCmd = "E:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1\setup.cmd"
+$sdkDir = if ($env:ZEPHYR_SDK_INSTALL_DIR) {
+    $env:ZEPHYR_SDK_INSTALL_DIR
+} else {
+    "E:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1"
+}
+$setupCmd = Join-Path $sdkDir "setup.cmd"
 if (Test-Path $setupCmd) {
     Write-Host "[bootstrap] 注册 Zephyr SDK CMake 包"
     & $setupCmd /c

@@ -4,20 +4,14 @@ $ErrorActionPreference = 'Continue'
 # 以脚本所在位置推导工作区根，与文件夹名解耦（重命名后无需修改）
 $ws = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
-$env:ZEPHYR_BASE = Join-Path $ws 'zephyr'
-$env:ZEPHYR_SDK_INSTALL_DIR = 'E:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1'
-$env:ZEPHYR_TOOLCHAIN_VARIANT = 'zephyr'
-$env:ESPRESSIF_TOOLCHAIN_PATH = 'C:\Users\12968399\.zinstaller\tools\openocds\openocd-esp32'
-$env:OPENOCD_DEFAULT_PATH = 'C:/Users/12968399/.zinstaller/tools/openocds/openocd-esp32/share/openocd/scripts'
+# 统一环境入口：ZEPHYR_SDK_INSTALL_DIR / ZEPHYR_BASE / PATH 只在 scripts\env.ps1 维护，
+# 避免同一路径在本文件重复硬编码。其他开发者只需配置自己的 SDK 路径。
+. (Join-Path $ws 'scripts\env.ps1')
+$ErrorActionPreference = 'Continue'
+
 $platformModule = Join-Path $ws 'platform'
 $atmosicModule = Join-Path $ws 'modules\hal\atmosic'
 $uwbiotModule = Join-Path $ws 'modules\uwb\uwbiot'
-
-# Ensure venv west is on PATH
-$venvScripts = Join-Path $ws '.venv\Scripts'
-if ($env:PATH -notlike "*$venvScripts*") {
-    $env:PATH = "$venvScripts;${env:PATH}"
-}
 
 $appDir = Join-Path $ws 'app'
 $boards = @(
