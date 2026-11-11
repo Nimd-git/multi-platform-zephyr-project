@@ -12,7 +12,7 @@
 2. 第 3 章「环境准备」→ 确认本机工具链、SDK、环境变量。
 3. 第 4 章「构建与烧录」→ 能编过三块板、能烧录。
 4. 第 6 章「二次开发标准流程」→ 按"改动类型"查对应 checklist。
-5. 第 8 章「FAQ」→ 遇到报错先查这里。
+5. 第 9 章「FAQ」→ 遇到报错先查这里。
 
 **绝对红线**：`zephyr/` 是上游仓库，`modules/hal/atmosic`、`modules/uwb/uwbiot` 是厂商 SDK，
 一律保持原样，不改动。项目级改动只允许落在 `platform/`、`app/`、`docs/`、根目录工作区文件。
@@ -26,7 +26,7 @@
 ├── zephyr/                  # 上游 Zephyr 4.4.99（只读，禁止修改）
 ├── modules/                 # west 管理的上游模块 + 厂商 SDK（只读）
 │   ├── hal/atmosic/         # Atmosic SDK（module 名 openair），仅 atm3405 使用
-│   ├── uwb/uwbiot/          # NXP SR040 UWB SDK（module 名 nxp-uwbiot）
+│   ├── uwb/uwbiot/          # NXP SR040 UWB SDK v05.09.06（module 名 nxp-uwbiot）
 │   └── lib/zcbor, hal/stm32, hal/espressif ...  # 上游模块
 ├── platform/                # ★ 自研平台模块（树外 Zephyr module，name: platform）
 │   ├── boards/              # 树外自定义板卡（vendor/board）
@@ -100,7 +100,7 @@ powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Full
 
 | 变量 | 值 | 注入位置 |
 |---|---|---|
-| `ZEPHYR_BASE` | `<工作区根>\zephyr` | `scripts/env.ps1`、workspace 文件、`build_all.ps1` |
+| `ZEPHYR_BASE` | `<工作区根>\zephyr` | `scripts/env.ps1`、workspace 文件（`build_all.ps1` 经 `env.ps1` 获得） |
 | `ZEPHYR_TOOLCHAIN_VARIANT` | `zephyr` | 同上 |
 | `ZEPHYR_SDK_INSTALL_DIR` | 外部 SDK 安装目录（本机默认 `E:\zephyr-sdk\toolchains\zephyr-sdk-1.0.1`） | `scripts/env.ps1`（环境变量优先，未设置才用默认值） |
 | `ZEPHYR_EXTRA_MODULES` | `...\modules\uwb\uwbiot;...\platform` | **必须**在 `zephyr_platform.code-workspace` 的 `terminal.integrated.env.windows` 中（VS Code 集成终端）与 `app/build_all.ps1` 中（CLI） |
@@ -235,7 +235,8 @@ powershell -File scripts\run.ps1  -Board qemu_cortex_m3   # Ctrl-A 然后 X 退�
 
 - UWB SR040（接线后才启用）：模板见 `platform/include/platform/plat_uwb.h` 头部注释，
   节点 label 必须为 `nxp_uwb_device`，`compatible = "nxp,uwb-sr040-device"`，
-  挂在使用 SPI 总线下（总线上需 `cs-gpios`），并声明 `uwb-irq-gpios` / `uwb-rdy-gpios` / `uwb-reset-gpios`。
+  挂在使用的 SPI 总线下（总线上需 `cs-gpios`），并声明 `uwb,irq-gpios` / `uwb,rdy-gpios` / `uwb,rstn-gpios`
+  （属性名以绑定 `modules/uwb/uwbiot/dts/bindings/nxp,uwb-sr040-device.yaml` 为准）。
 
 ---
 
@@ -318,8 +319,9 @@ platform/include/platform/plat_<name>.h
 
 | 头文件 | 能力 | 关键接口 |
 |---|---|---|
-| `platform/plat_version.h` | 版本与兼容宏 | `PLAT_FORMAT_VERSION`、`PLAT_DEPRECATED_SINCE()` |
+| `platform/plat_version.h` | 版本与兼容宏 | `PLAT_ZEPHYR_IS_VERSION()`、`PLAT_ZEPHYR_VERSION_AT_LEAST()`、`PLAT_DEPRECATED_SINCE()` |
 | `platform/plat_arch.h` | 架构标识 | `PLAT_ARCH_NAME` |
+| `platform/plat_clock.h` | 系统时钟 | `plat_clock_uptime_ms/ms32`、`plat_clock_delay_ms`、`plat_clock_cycles` |
 | `platform/plat_gpio.h` | GPIO | 输出/输入/中断/`plat_led_*` |
 | `platform/plat_uart.h` | UART | 轮询收发、中断接收（v4.4 超时为 `k_timeout_t`） |
 | `platform/plat_spi.h` | SPI | 全双工传输（`spi_config.cs` 为值类型，需 `memset` 清零） |
@@ -390,7 +392,8 @@ platform/include/platform/plat_<name>.h
 | `zcbor_new_state` 参数数量不符 | 本树 zcbor 0.9，7 参数 | 末尾补 `NULL, 0` |
 | `zcbor_bstr_encode` 类型不匹配 | 0.9 接受 `struct zcbor_string *` | 构造 `{ .value, .len }` 传入 |
 | 集成终端找不到 `west` / 缺 SDK 变量 | VS Code 主进程未继承新环境变量 | 以 workspace 文件 `terminal.integrated.env.windows` 为准，Reload Window |
-| `env.ps1` 后 west 报错无输出却 exit 1 | 脚本顶部 `$ErrorActionPreference='SilentlyContinue'` 吞掉 stderr | 诊断时在其后改 `Continue`，或用 `powershell -File` 运行脚本 |
+| `env.ps1` 加载中途报错中止 | 脚本顶部 `$ErrorActionPreference="Stop"`，任一探测失败即停 | 按报错信息补齐缺失组件后重试 |
+| `build_all.ps1` 报 `$PSScriptRoot` 为 null、错误行号与文件不符 | 文件缺 UTF-8 BOM，PS 5.1 按 GBK 解析使中文注释吞掉下一行 | 所有 `.ps1` 一律存 UTF-8 with BOM（见第 10 章） |
 | atm3405 标准 jlink 烧录失败 | FLM `loadfile` 走 Verify 而非 Erase | 用 `atmfastload` runner（SRAM fast_load 协议，RRAM 地址 0x10000） |
 | uwbiot 编译报 `UWB_DeviceConfig.h` `#error` | 需 `DEBUG` 或 `NDEBUG` 二选一 | 通用板级层 CMake 已定义 `NDEBUG` |
 | 改完代码构建仍用旧产物 | Workbench 的 `--pristine never` | 用 `-p always` 或删除 `app/build/<board>` |
@@ -445,4 +448,4 @@ AI 接手本工程时，按以下顺序执行：
 
 ---
 
-_最后更新：2026-10-21_
+_最后更新：2026-11-03_

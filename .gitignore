@@ -9,7 +9,9 @@ app/build_all.log
 modules/
 
 # 上游源码（不随本仓库提交；新环境克隆后由 west update 拉取）
-zephyr/
+# 注意：锚定到仓库根，仅忽略根级 RTOS 树；不要写成 "zephyr/"（会误伤
+# platform/zephyr/ 等合法的模块 CMake 目录，导致平台模块逻辑无法进版本库）。
+/zephyr/
 bootloader/mcuboot/
 tools/edtt/
 tools/net-tools/

@@ -6,6 +6,151 @@
 
 ---
 
+## 2026-11-03 · 修复 platform_framework 链接 UwbApi 失败（UwbApi_* undefined reference）
+
+**接上条**：`__NOP` 修复后 esp32c6 推进到链接阶段，报
+`undefined reference to UwbApi_Initialize / GetDeviceInfo / SessionInit / StartRangingSession / SessionDeinit`
+（来自 `platform/middleware/uwb/plat_uwb.c`）。三平台均会命中。
+
+**根因**：`platform/zephyr/CMakeLists.txt` 试图把 SDK 库
+（`uwb_api;uwb_core;halimpl;uci_core;mwlog;NRF52840_SR040`）链给 `platform_framework`，
+但用的是 `set_target_properties(platform_framework PROPERTIES LINK_LIBRARIES ...)`。
+该写法对 `zephyr_library_named` 创建的目标**无效**，链接响应文件 `zephyr_pre0.rsp` 中
+根本不含 `uwb_api`，故符号未进入链接。
+
+**改动**（仅 `platform/`，未碰 `modules/`）：
+- 改为 `target_link_libraries(platform_framework PUBLIC <sdk_lib>)`（关键字签名，与
+  `zephyr_library_named` 内部已用的 PUBLIC 签名一致；plain 签名会报
+  "keyword signature already used" 拒绝）。
+- 用 `if(TARGET <lib>)` 守卫遍历 6 个 SDK 库：`uwb_api/uwb_core/uci_core/mwlog/NRF52840_SR040`
+  在配置期即存在（ADD_LIBRARY），直接链接；`halimpl` 经 `zephyr_library_named()` 延迟创建，
+  配置期 `if(TARGET halimpl)` 为 false，靠 SDK 库内部的
+  `TARGET_LINK_LIBRARIES(uwb_api uci_core uwb_core ...)` 传递依赖在链接期拉入。
+
+**验证**：esp32c6 重新链接通过，`zephyr/zephyr.elf` 成功生成（10.2MB，含内存报告），
+`UwbApi_*` 不再 undefined。后续 `esptool` 报错仅为手动裸 ninja 未 source `env.ps1`
+导致 PATH 缺 esptool，非构建缺陷（`build_all.ps1` 会 source env 设置 PATH）。
+
+**遗留**：确认 `halimpl` 经传递依赖正确拉入（esp32c6 链接已通过，间接验证）。
+
+---
+
+## 2026-11-03 · 修正 __NOP 修复方案：强制包含兼容头（CMake 会丢弃函数式宏定义）
+
+**目标**：此前用 `target_compile_definitions(halimpl/zephyr_interface PRIVATE "__NOP()=arch_nop()")`
+修复 `phNxpUwb_Common.c` 的 `__NOP` 隐式声明错误，但增量/全量构建仍报同样的错。本条目修正为可靠方案。
+
+**根因（关键踩坑）**：CMake **会静默丢弃"函数式"宏定义**——`__NOP()=arch_nop()` 带括号，CMake 判定
+"Function-style preprocessor definitions may not be passed on the compiler command line" 并丢弃，故编译命令里
+根本没有 `-D__NOP`，`__NOP` 依旧未定义。同时 `halimpl` 由 nxp-uwbiot 模块以 `zephyr_library_named()` 延迟创建，
+配置阶段 `if(TARGET halimpl)` 恒为 false，无法对其直接注入。
+
+**改动**（均落在允许修改区，未碰 `modules/` 只读 SDK）：
+- 新增 `platform/include/platform/uwb_sdk_compat.h`：强制包含后提供 `#define __NOP() arch_nop()`
+  （`arch_nop()` 由 `<zephyr/arch/cpu.h>` 提供，各架构均有实现）；仅在未定义时定义，兼容 FreeRTOS 分支。
+- `app/CMakeLists.txt`：经 `zephyr_interface` 注入
+  `target_compile_options(zephyr_interface INTERFACE "SHELL:-include <abs>/uwb_sdk_compat.h")`，
+  传播到 halimpl 等所有链接 `zephyr_interface` 的目标。机制与 `modules/hal/espressif` 的 `zephyr_compat.h`
+  的 `-include` 完全相同（其编译命令已验证生效）。
+- 撤销上一版无效的 `target_compile_definitions` 写法（CMake 丢弃，且 `if(TARGET halimpl)` 守卫无效）。
+
+**关键决策**：遵守 SOP §0/§10 不改 `modules/`；用强制包含头而非编译期宏，规避 CMake 对函数式宏的限制。
+
+**验证**：`ninja ... phNxpUwb_Common.c.obj` 增量编译通过，编译命令含 `-include .../uwb_sdk_compat.h`、
+无 `__NOP` 报错；三平台 `build_all.ps1` 全量构建进行中（esp32c6 已越过 halimpl 继续编译）。
+
+**遗留**：上两版 dev-log（"清理 SDK 残留""修复 __NOP 编译错误"）中"宏定义"描述已过时，以本条为准。
+`uwb_bus_interface.c:37` 的 `SPI_DT_SPEC_GET(...,0)` 弃用告警仍保留（SDK 源码，按红线不改）。
+
+---
+
+## 2026-11-03 · 清理 SDK 残留编辑，锁定 platform 方案（不改 modules/）
+
+**目标**：此前排查 `__NOP` 报错时曾在 SDK 内直接编辑（phNxpUwb_Common.c 加 Zephyr 分支 + UWB_NOP 宏、
+uwb_bus_interface.c 去掉 SPI_DT_SPEC_GET 第 3 参数），因 `modules/` 被 git 忽略导致 `git checkout` 回退失败、
+改动残留。按用户决策"保持 platform 方案，清 SDK 残留"清理。
+
+**改动**（仅还原 `modules/` 到原生/项目补丁态，未新增 SDK 修改）：
+- `modules/uwb/uwbiot/libs/halimpl/transport/SPI/common/phNxpUwb_Common.c`：用原生文件覆盖还原
+  （MD5 与原生 SDK 一致），撤销 __NOP 的 SDK 内修复。
+- `modules/uwb/uwbiot/boards/Host/zephyr_generic/uwb_bus_interface.c`：将 `SPI_DT_SPEC_GET(UWB_NODE, SPI_OP)`
+  还原为项目补丁原值 `SPI_DT_SPEC_GET(UWB_NODE, SPI_OP, 0)`（保留弃用告警，非错误，按红线不改）。
+
+**关键决策**：`__NOP` 修复最终落在 `platform/zephyr/CMakeLists.txt` 的
+`target_compile_definitions(halimpl PRIVATE "__NOP()=arch_nop()")`，不改厂商 SDK（SOP §0/§10）。
+
+**验证**：`phNxpUwb_Common.c` 与原生 SDK MD5 一致；halimpl 对象增量编译 `exit=0`，无 `__NOP` 报错。
+项目原有本地补丁（boards/CMakeLists.txt 的 NXP_UWB_HOST_CUSTOM 分支、zephyr/Kconfig.uwb 的
+NXP_UWB_HOST_CUSTOM、boards/Host/zephyr_generic/ 10 文件、dts/bindings/nxp,uwb-sr040-device.yaml）保持不动。
+
+---
+
+## 2026-11-03 · 修复 nxp-uwbiot SDK 在 Zephyr 下 `__NOP()` 编译错误（不改动厂商 SDK）
+
+**目标**：esp32c6 实编（CONFIG_NXP_UWB_ZEPHYR_MODULE=y + SR040 DT 节点）首次让 SDK 源码真正参与编译，
+报 `phNxpUwb_Common.c:65: implicit declaration of '__NOP'`（`-Werror=implicit-int` 升级为错误）。
+
+**根因**：SDK 的 `modules/uwb/uwbiot/libs/halimpl/transport/SPI/common/phNxpUwb_Common.c`
+仅在 `#if UWBIOT_OS_FREERTOS` 分支 `#include "cmsis_gcc.h"` 提供 `__NOP()`；Zephyr 分支未 include 任何
+提供 `__NOP()` 的头，而 Zephyr 构建开启 `-Werror=implicit-int`，故报隐式声明错误。
+
+**改动**（均落在 `platform/`，未触碰 `modules/` 只读 SDK）：
+- `platform/zephyr/CMakeLists.txt`：在 `if(CONFIG_NXP_UWB_ZEPHYR_MODULE)` 块内，对已先于 platform 模块
+  创建的 `halimpl` 目标追加 `target_compile_definitions(halimpl PRIVATE "__NOP()=arch_nop()")`。
+  `arch_nop()` 由 `<zephyr/kernel.h>` 经 `arch/cpu.h` 间接提供，Zephyr 各架构均有实现。
+- 已尝试的 `-include` 垫片头方案被否决：gcc 把 `-include uwb_sdk_compat.h` 当成第二个输入文件，
+  触发 `cannot specify '-o' with '-c' ... with multiple files`。
+
+**关键决策 / 踩坑**：
+- 遵守 SOP §0/§10：`modules/`（厂商 SDK）一律只读，禁止修改。采用"项目侧编译期宏"而非改 SDK 源码，
+  也与 dev-log 之前"SDK 升级后需重打本地补丁"的临时做法解耦，避免每次 SDK 同步都手动改 SDK。
+- 用 `if(TARGET halimpl)` 守卫：nxp-uwbiot 在 `ZEPHYR_EXTRA_MODULES` 中排在 platform 之前，目标已存在。
+
+**验证**：`ninja ... phNxpUwb_Common.c.obj` 增量编译 `exit=0`，该对象编译通过（无 `__NOP` 报错）。
+整仓全量构建（`build_all.ps1`）待补跑确认后续无同类 SDK 兼容性错误。
+
+**遗留**：
+- `modules/uwb/uwbiot/boards/Host/zephyr_generic/uwb_bus_interface.c:37` 的
+  `SPI_DT_SPEC_GET(UWB_NODE, SPI_OP, 0)` 会触发
+  `Delay parameter in SPI DT macros is deprecated, use DT prop instead` 警告（SDK 源码，按红线不改；
+  该警告非错误，不影响链接）。如需消除需改 SDK，违反当前红线，故保留。
+- esp32c6 三平台全量冒烟 + SR040 实编译验证（dev-log 历史遗留项）仍待补跑。
+
+---
+
+## 2026-11-03 · UWB SDK 升级 v05.09.06、build_all.ps1 补 BOM、docs 复核对齐代码
+
+**目标**：`modules/uwb/uwbiot` 从 v05.09.05 同步到 v05.09.06；复核 docs 与代码状态一致性，修正失效引用。
+
+**改动**：
+- `modules/uwb/uwbiot/`：自 `F:\Doc\G12\sdk\UWBIOT_SR040_Zephyr_v05.09.06\uwbiot-top` 覆盖同步
+  （305 个文件；沿用旧例不拷入 SDK 自带 `docs/` HTML 文档目录）
+- 本地补丁重打（SDK 升级后必做，否则通用板级层失效）：
+  - `modules/uwb/uwbiot/zephyr/Kconfig.uwb`：重新加入 `NXP_UWB_HOST_CUSTOM`
+  - `modules/uwb/uwbiot/boards/CMakeLists.txt`：重新加入 `zephyr_generic` 分支
+  - `boards/Host/zephyr_generic/`（10 文件）、`dts/bindings/nxp,uwb-sr040-device.yaml` 保留完好
+- `app/build_all.ps1`：补 UTF-8 BOM。10-27 改造时丢 BOM，PS 5.1（GBK 系统）按 ANSI 解析把
+  中文注释与下一行合并，`$PSScriptRoot` 赋值被吞、报错行号错位，脚本完全无法运行
+- `docs/development-sop.md`：§0 FAQ 章号引用 8→9；§5.1 UWB 属性名对齐绑定
+  （`uwb,irq-gpios` / `uwb,rdy-gpios` / `uwb,rstn-gpios`）；§7 补 `plat_clock.h` 行、
+  修正 `plat_version.h` 宏名；§3.3 `ZEPHYR_BASE` 注入位置表述；§9 env.ps1 条目对齐现状
+  （`ErrorActionPreference="Stop"`）并新增 BOM 故障行；§1 标注 SDK v05.09.06
+- `platform/include/platform/plat_uwb.h`：头部 overlay 模板属性名同步绑定（`uwb,rstn-gpios` 等）
+
+**关键决策 / 踩坑**：
+- 5.9.6 相对 5.9.5 变更极小：`UwbApi_Utility.c` 加回调 NULL 防护；`uwa_dm_act.c` / `uwb_main.c`
+  仅行尾差异；**公开 API 头文件零变化**，`plat_uwb.c` 无需适配
+- 同步用 robocopy `/E`（不镜像删除），保留本地新增目录；两份本地补丁必须在同步后重打
+- 新 SDK 附带 `scripts/fw_integration_sr04x.py`，未被构建链引用，暂不使用
+
+**验证**：版本文件确认为 `UWBIOT_v05.09.06`；SOP 中引用的事实（shell 命令、API 名、文件路径、
+日志串、Kconfig、绑定属性）逐项与代码核对通过。三平台构建本轮未复跑（Shell 后端故障中断）。
+
+**遗留**：
+- 三平台冒烟构建 + esp32c6 挂 SR040 节点的实编译验证（使 SDK 源码真正参与编译）待补跑。
+
+---
+
 ## 2026-10-27 · 上位机工具增加「环境变量配置」检测与一键写入
 
 **目标**：让其他开发者首次打开工具就能看到要配哪些环境变量、各变量用途、路径示例，
@@ -35,6 +180,8 @@
 **验证**：Python 源码语法人工通读正确；Shell 工具间歇性启动失败未能跑 py_compile 与工具 GUI 冒烟，
 建议在本机 `python -m py_compile core/probe.py core/steps.py` 后运行上位机工具点一次「开始检测」+「一键配置」。
 
+**遗留**：py_compile 与 GUI 冒烟待本机补验（见验证段）。
+
 ---
 
 ## 2026-10-27 · 写入用户环境变量，并同步可移植改动到上位机工具
@@ -60,6 +207,8 @@
 
 **验证**：上位机源码已无 `F:\src` / `E:\zephyr-sdk` 硬编码（生成目录除外）；环境变量写入命令
 执行成功。未重新打包 exe，如需分发需运行 `build-desktop.ps1`。
+
+**遗留**：exe 未重新打包，分发前需运行 `build-desktop.ps1`。
 
 ---
 

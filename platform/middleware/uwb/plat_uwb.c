@@ -45,7 +45,7 @@ int plat_uwb_init(void)
 	}
 
 	status = UwbApi_Initialize(&app_ctx);
-	if (status != NFCSTATUS_SUCCESS) {
+	if (status != 0) {
 		LOG_ERR("UwbApi_Initialize failed: 0x%02x", status);
 		return -EIO;
 	}
@@ -58,9 +58,9 @@ int plat_uwb_deinit(void)
 {
 	tUWBAPI_STATUS status;
 
-	status = UwbApi_DeInitUwb();
-	if (status != NFCSTATUS_SUCCESS) {
-		LOG_WRN("UwbApi_DeInitUwb status: 0x%02x", status);
+	status = UwbApi_ShutDown();
+	if (status != 0) {
+		LOG_WRN("UwbApi_ShutDown status: 0x%02x", status);
 	}
 	return 0;
 }
@@ -75,7 +75,7 @@ int plat_uwb_get_device_info(struct plat_uwb_dev_info *info)
 	}
 
 	status = UwbApi_GetDeviceInfo(&dev_info);
-	if (status != NFCSTATUS_SUCCESS) {
+	if (status != 0) {
 		LOG_ERR("UwbApi_GetDeviceInfo failed: 0x%02x", status);
 		return -EIO;
 	}
@@ -109,13 +109,13 @@ int plat_uwb_session_start(uint32_t session_id, uint32_t *session_handle)
 	}
 
 	status = UwbApi_SessionInit(session_id, UWBD_RANGING_SESSION, &handle);
-	if (status != NFCSTATUS_SUCCESS) {
+	if (status != 0) {
 		LOG_ERR("UwbApi_SessionInit(%u) failed: 0x%02x", session_id, status);
 		return -EIO;
 	}
 
 	status = UwbApi_StartRangingSession(handle);
-	if (status != NFCSTATUS_SUCCESS) {
+	if (status != 0) {
 		LOG_ERR("UwbApi_StartRangingSession failed: 0x%02x", status);
 		(void)UwbApi_SessionDeinit(handle);
 		return -EIO;
@@ -131,7 +131,7 @@ int plat_uwb_session_stop(uint32_t session_handle)
 	tUWBAPI_STATUS status;
 
 	status = UwbApi_StopRangingSession(session_handle);
-	if (status != NFCSTATUS_SUCCESS) {
+	if (status != 0) {
 		LOG_WRN("UwbApi_StopRangingSession failed: 0x%02x", status);
 		return -EIO;
 	}
@@ -143,7 +143,7 @@ int plat_uwb_session_deinit(uint32_t session_handle)
 	tUWBAPI_STATUS status;
 
 	status = UwbApi_SessionDeinit(session_handle);
-	if (status != NFCSTATUS_SUCCESS) {
+	if (status != 0) {
 		LOG_WRN("UwbApi_SessionDeinit failed: 0x%02x", status);
 		return -EIO;
 	}

@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Platform Framework 顶层 Kconfig（由 Zephyr 构建系统经 module.yml 自动 rsource）
+
+menu "Platform Framework"
+
+rsource "../compat/Kconfig.compat"
+
+config PLATFORM_SERVICES
+	bool "Enable platform framework core services"
+	default y
+	help
+	  启用树外平台层：版本兼容、统一时钟、设备管理/健康监测服务以及
+	  platform shell 命令集。对应架构图“系统服务层”的平台公共部分。
+
+rsource "../subsys/Kconfig"
+rsource "../drivers/Kconfig"
+rsource "../middleware/Kconfig"
+rsource "../hal/Kconfig"
+
+endmenu

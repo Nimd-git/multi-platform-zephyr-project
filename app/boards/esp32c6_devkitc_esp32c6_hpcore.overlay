@@ -71,3 +71,37 @@
 		status = "okay";
 	};
 };
+
+/* SPI2：UWB SR040（SCLK=GPIO10 / MOSI=GPIO11 / MISO=GPIO2，CS=GPIO18 软件 GPIO 控制） */
+&pinctrl {
+	spi2_default: spi2_default {
+		group1 {
+			pinmux = <SPIM2_SCLK_GPIO10>;
+		};
+		group2 {
+			pinmux = <SPIM2_MOSI_GPIO11>;
+		};
+		group3 {
+			pinmux = <SPIM2_MISO_GPIO2>;
+			bias-pull-up;
+		};
+	};
+};
+
+&spi2 {
+	status = "okay";
+	pinctrl-0 = <&spi2_default>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
+
+	/* NXP SR040：label 必须为 nxp_uwb_device（SDK zephyr_generic 层 DT_NODELABEL 硬编码）。
+	 * IRQ/RDY 低有效+上拉（SDK 配下降沿中断），RSTN 低有效（高=运行）。SPI 模式 CPOL=1。 */
+	nxp_uwb_device: nxp_uwb_device@0 {
+		compatible = "nxp,uwb-sr040-device";
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+		uwb,irq-gpios  = <&gpio0 19 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		uwb,rdy-gpios  = <&gpio0 20 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		uwb,rstn-gpios = <&gpio0 21 GPIO_ACTIVE_LOW>;
+	};
+};

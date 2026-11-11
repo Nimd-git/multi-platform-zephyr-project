@@ -17,4 +17,36 @@
 	};
 };
 
-/* SPI0 / I2C0 由 SoC dtsi 提供，如需启用可在此追加 status = "okay" 和 pinctrl */
+/* SPI0：UWB SR040（SCLK=P13 / MOSI=P14 / MISO=P15，CS=P12 软件 GPIO 控制）。
+ * atmosic pinctrl 驱动对 pin/signal 组合自由路由（pinctrl_atm.c 未做校验）。 */
+&pinctrl {
+	spi0_clk_default: spi0_clk_default {
+		pinmux = <13 PINMUX_SPI0_CLK>;
+	};
+
+	spi0_mosi_default: spi0_mosi_default {
+		pinmux = <14 PINMUX_SPI0_MOSI>;
+	};
+
+	spi0_miso_default: spi0_miso_default {
+		pinmux = <15 PINMUX_SPI0_MISO>;
+	};
+};
+
+&spi0 {
+	status = "okay";
+	pinctrl-0 = <&spi0_clk_default &spi0_mosi_default &spi0_miso_default>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
+
+	/* NXP SR040：label 必须为 nxp_uwb_device（SDK zephyr_generic 层 DT_NODELABEL 硬编码）。
+	 * IRQ/RDY 低有效+上拉（SDK 配下降沿中断），RSTN 低有效（高=运行）。SPI 模式 CPOL=1。 */
+	nxp_uwb_device: nxp_uwb_device@0 {
+		compatible = "nxp,uwb-sr040-device";
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+		uwb,irq-gpios  = <&gpio0 29 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		uwb,rdy-gpios  = <&gpio0 19 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		uwb,rstn-gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
+	};
+};

@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# 树外 Zephyr 模块（Platform Framework）描述文件。
+# 路径固定为 <module>/zephyr/module.yml（见 zephyr/scripts/zephyr_module.py）。
+#
+# 挂接方式（app/CMakeLists.txt）:
+#   list(APPEND ZEPHYR_EXTRA_MODULES ${CMAKE_CURRENT_SOURCE_DIR}/../platform)
+#
+# 模块内 dts/bindings 通过下方 build.settings.dts_root 显式加入 DTS_ROOT，
+# 绑定（plat,platform-monitor）与 vendor-prefixes.txt 才能被构建系统识别。
+
+name: platform
+
+build:
+  # 路径相对于模块根（platform/），由 zephyr_module.py 的 process_cmake/
+  # process_kconfig 拼接，即 platform/zephyr/CMakeLists.txt 与 Kconfig。
+  cmake: zephyr
+  kconfig: zephyr/Kconfig
+  # v4.4 起模块的 DTS / SoC 等根目录不再隐式自动发现，必须显式声明。
+  # dts_root 指向模块根，绑定与 vendor-prefixes 位于 platform/dts/bindings。
+  # board_root 指向模块根，树外板卡定义位于 platform/boards/<vendor>/<board>。
+  settings:
+    dts_root: .
+    board_root: .
+
+# 自定义 west runner：atmfastload（J-Link fast_load 烧录，绕过 FLM）。
+# 由 run_common.py 通过 parse_modules + import_from_path 动态加载；
+# 模块须经 west manifest 或 ZEPHYR_EXTRA_MODULES 可见才能被 west flash 发现。
+runners:
+  - file: zephyr/runners/atmfastload.py

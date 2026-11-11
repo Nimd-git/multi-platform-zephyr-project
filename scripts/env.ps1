@@ -1,4 +1,4 @@
-﻿﻿# SPDX-License-Identifier: Apache-2.0
+﻿# SPDX-License-Identifier: Apache-2.0
 #
 # 平台工作区构建环境加载脚本（需 dot-source 方式加载）:
 #

@@ -55,3 +55,19 @@ target_sources(app PRIVATE
   src/app_services_demo.c
   src/app_middleware_demo.c
 )
+
+# 修复 nxp-uwbiot SDK 在 Zephyr 下 __NOP() 未定义（不改动厂商 SDK modules/）：
+# SDK 的 halimpl 源码 phNxpUwb_Common.c 在 FreeRTOS 分支用 CMSIS 的 __NOP()，
+# Zephyr 分支未提供，而 Zephyr 开启 -Werror=implicit-int 会报隐式声明错误。
+# CMake 会丢弃"函数式"宏定义（__NOP()=arch_nop() 无法通过 -D 传递），故改用
+# 强制包含兼容头（提供 __NOP() -> arch_nop()）的方式，与 modules/hal/espressif
+# 的 zephyr_compat.h 机制相同。经 zephyr_interface 注入 INTERFACE 编译选项，
+# 传播到 halimpl 等所有链接 zephyr_interface 的目标。
+# 注：halimpl 由 nxp-uwbiot 模块以 zephyr_library_named() 延迟创建，配置阶段
+# if(TARGET halimpl) 恒为 false，无法直接对其注入；故作用于 zephyr_interface。
+set(UWB_SDK_COMPAT_H
+    ${CMAKE_CURRENT_SOURCE_DIR}/../platform/include/platform/uwb_sdk_compat.h)
+if(TARGET zephyr_interface)
+  target_compile_options(zephyr_interface INTERFACE
+    "SHELL:-include ${UWB_SDK_COMPAT_H}")
+endif()

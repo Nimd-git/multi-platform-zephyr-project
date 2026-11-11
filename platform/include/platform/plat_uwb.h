@@ -12,9 +12,9 @@
  *           compatible = "nxp,uwb-sr040-device";
  *           reg = <0>;
  *           spi-max-frequency = <1000000>;
- *           uwb-irq-gpios   = <&gpioX pin GPIO_ACTIVE_HIGH>;
- *           uwb-rdy-gpios   = <&gpioX pin GPIO_ACTIVE_HIGH>;
- *           uwb-reset-gpios = <&gpioX pin GPIO_ACTIVE_LOW>;
+ *           uwb,irq-gpios   = <&gpioX pin GPIO_ACTIVE_HIGH>;
+ *           uwb,rdy-gpios   = <&gpioX pin GPIO_ACTIVE_HIGH>;
+ *           uwb,rstn-gpios  = <&gpioX pin GPIO_ACTIVE_LOW>;
  *       };
  *   };
  *

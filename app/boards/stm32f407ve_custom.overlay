@@ -58,11 +58,23 @@
 	};
 };
 
-/* SPI1：PA5(SCK) / PA6(MISO) / PA7(MOSI) */
+/* SPI1：PA5(SCK) / PA6(MISO) / PA7(MOSI)；UWB SR040 挂载（CS=PB0，SDK 层软件 GPIO 控制） */
 &spi1 {
 	pinctrl-0 = <&spi1_sck_pa5 &spi1_miso_pa6 &spi1_mosi_pa7>;
 	pinctrl-names = "default";
 	status = "okay";
+	cs-gpios = <&gpiob 0 GPIO_ACTIVE_LOW>;
+
+	/* NXP SR040：label 必须为 nxp_uwb_device（SDK zephyr_generic 层 DT_NODELABEL 硬编码）。
+	 * IRQ/RDY 低有效+上拉（SDK 配下降沿中断），RSTN 低有效（高=运行）。SPI 模式 CPOL=1。 */
+	nxp_uwb_device: nxp_uwb_device@0 {
+		compatible = "nxp,uwb-sr040-device";
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+		uwb,irq-gpios  = <&gpiob 1 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		uwb,rdy-gpios  = <&gpiob 5 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		uwb,rstn-gpios = <&gpiob 8 GPIO_ACTIVE_LOW>;
+	};
 };
 
 /* I2C1：PB6(SCL) / PB7(SDA) */

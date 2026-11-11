@@ -1,4 +1,4 @@
-#requires -version 5.1
+﻿#requires -version 5.1
 $ErrorActionPreference = 'Continue'
 
 # 以脚本所在位置推导工作区根，与文件夹名解耦（重命名后无需修改）
